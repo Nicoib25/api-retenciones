@@ -55,7 +55,7 @@
       <!-- PESTAÑAS PRINCIPALES -->
       <div class="pestanas-main">
         <button class="pestana-main activa" onclick="cambiarVista('facturas', this)">
-          &#128196; Facturas pendientes
+          &#128196; Facturas en proceso
         </button>
         <button class="pestana-main" onclick="cambiarVista('dashboard', this)">
           &#128202; Control de envíos
@@ -78,7 +78,7 @@
             <p class="tarjeta-valor color-gris" id="stat-sinauth">0</p>
           </div>
           <div class="tarjeta">
-            <p class="tarjeta-label">Pendientes</p>
+            <p class="tarjeta-label">Pendiente de envío</p>
             <p class="tarjeta-valor color-amarillo" id="stat-pendiente">0</p>
           </div>
           <div class="tarjeta">
@@ -95,7 +95,7 @@
         <div class="pestanas">
           <button class="pestana activa" onclick="cambiarPestana('todas', this)">Todas</button>
           <button class="pestana" onclick="cambiarPestana('PENDIENTE_AUTH', this)">Sin autorización</button>
-          <button class="pestana" onclick="cambiarPestana('PENDIENTE', this)">Pendientes</button>
+          <button class="pestana" onclick="cambiarPestana('PENDIENTE', this)">Pendiente de envío</button>
           <button class="pestana" onclick="cambiarPestana('PROCESADO', this)">Procesadas</button>
           <button class="pestana" onclick="cambiarPestana('RECHAZADO', this)">Rechazadas</button>
         </div>
@@ -183,19 +183,24 @@
           </div>
         </div>
 
-        <!-- FILTROS DASHBOARD -->
+        <!-- PESTAÑAS DASHBOARD -->
+        <div class="pestanas" style="margin-bottom:12px">
+          <button class="pestana activa" onclick="cambiarPestanaDash('todas', this)">Todos</button>
+          <button class="pestana" onclick="cambiarPestanaDash('PENDIENTE', this)">Pendiente de envío</button>
+          <button class="pestana" onclick="cambiarPestanaDash('TESAKA_GENERADO', this)">Enviados por TESAKA</button>
+          <button class="pestana" onclick="cambiarPestanaDash('ERROR', this)">Error</button>
+        </div>
+
+        <!-- FILTROS Y ACCIONES DASHBOARD -->
         <div class="barra-acciones">
           <div class="filtros">
             <input type="text" id="dash-filtro-ruc" placeholder="Buscar RUC o Nº doc..." oninput="filtrarDashboard()">
-            <select id="dash-filtro-estado" onchange="filtrarDashboard()">
-              <option value="">Todos los estados</option>
-              <option value="ENVIADO">Enviado</option>
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="ERROR">Error</option>
-              <option value="FISICA_MANUAL">Física manual</option>
-              <option value="SIMULADO">Simulado</option>
-            </select>
             <button class="btn-secundario" onclick="cargarDashboard()">&#8635; Actualizar</button>
+          </div>
+          <div class="acciones-sel">
+            <span id="dash-info-sel">0 facturas seleccionadas</span>
+            <button class="btn-aprobar" id="btn-generar-tesaka" onclick="generarTesaka()" style="display:none">&#10003; Generar TESAKA</button>
+            <button class="btn-secundario" onclick="limpiarSeleccionDash()">Limpiar selección</button>
           </div>
         </div>
 
@@ -204,6 +209,7 @@
           <table class="tabla">
             <thead>
               <tr>
+                <th style="width:36px"><input type="checkbox" id="dash-check-all" onchange="toggleTodosDash(this)"></th>
                 <th>Nº Doc Ret</th>
                 <th>RUC Proveedor</th>
                 <th>Razón Social</th>
@@ -211,7 +217,7 @@
                 <th class="der">Base Imponible</th>
                 <th class="der">Retención</th>
                 <th>Tipo</th>
-                <th>Estado SIFEN</th>
+                <th>Estado</th>
                 <th>Fecha envío</th>
                 <th>Acciones</th>
               </tr>
