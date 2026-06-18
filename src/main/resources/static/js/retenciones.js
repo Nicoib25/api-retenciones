@@ -8,6 +8,8 @@ var pestanaActual = "todas";
 var facturas = [];
 var retencionesDB = [];
 var vistaActual = "facturas";
+var pestanaDashActual = "todas";
+var seleccionadosDash = [];
 
 // =============================================
 // USUARIOS
@@ -168,12 +170,87 @@ function cargarDashboard() {
 
 function filtrarDashboard() { renderDashboard(); }
 
+function cambiarPestanaDash(nombre, elemento) {
+  pestanaDashActual = nombre;
+  seleccionadosDash = [];
+  actualizarInfoSelDash();
+  var pestanas = document.querySelectorAll("#vista-dashboard .pestana");
+  for (var i = 0; i < pestanas.length; i++) pestanas[i].classList.remove("activa");
+  elemento.classList.add("activa");
+  renderDashboard();
+}
+
+function toggleSeleccionDash(id, checkbox) {
+  if (checkbox.checked) { seleccionadosDash.push(id); }
+  else { seleccionadosDash = seleccionadosDash.filter(function(x) { return x !== id; }); }
+  actualizarInfoSelDash();
+}
+
+function toggleTodosDash(checkbox) {
+  seleccionadosDash = [];
+  var checks = document.querySelectorAll(".dash-check-item");
+  for (var i = 0; i < checks.length; i++) {
+    checks[i].checked = checkbox.checked;
+    if (checkbox.checked) seleccionadosDash.push(checks[i].dataset.id);
+  }
+  actualizarInfoSelDash();
+}
+
+function limpiarSeleccionDash() {
+  seleccionadosDash = [];
+  var checks = document.querySelectorAll(".dash-check-item");
+  for (var i = 0; i < checks.length; i++) checks[i].checked = false;
+  var checkAll = document.getElementById("dash-check-all");
+  if (checkAll) checkAll.checked = false;
+  actualizarInfoSelDash();
+}
+
+function actualizarInfoSelDash() {
+  var n = seleccionadosDash.length;
+  var el = document.getElementById("dash-info-sel");
+  if (el) el.textContent = n + " factura" + (n !== 1 ? "s" : "") + " seleccionada" + (n !== 1 ? "s" : "");
+  var btn = document.getElementById("btn-generar-tesaka");
+  if (btn) btn.style.display = n > 0 ? "inline-block" : "none";
+}
+
+function generarTesaka() {
+  if (seleccionadosDash.length === 0) { mostrarMensaje("Selecciona al menos una factura.", "error"); return; }
+  var btn = document.getElementById("btn-generar-tesaka");
+  btn.disabled = true; btn.textContent = "Generando...";
+
+  fetch(URL_API + "/retenciones/generar-tesaka", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: seleccionadosDash.map(Number) })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error("Error al generar");
+    return r.blob();
+  })
+  .then(function(blob) {
+    // Descargar archivo automáticamente
+    var url = window.URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "tesaka_" + new Date().toISOString().substring(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    mostrarMensaje(seleccionadosDash.length + " factura/s generadas para TESAKA ✓", "ok");
+    seleccionadosDash = [];
+    actualizarInfoSelDash();
+    cargarDashboard();
+  })
+  .catch(function(e) { mostrarMensaje("Error: " + e.message, "error"); })
+  .finally(function() { btn.disabled = false; btn.textContent = "✓ Generar TESAKA"; });
+}
+
 function renderDashboard() {
   var buscar = document.getElementById("dash-filtro-ruc").value.toLowerCase();
-  var estado = document.getElementById("dash-filtro-estado").value;
   var tbody  = document.getElementById("cuerpo-dashboard");
   var filtrados = retencionesDB.filter(function(r) {
-    var matchEstado = !estado || r.estadoSifen === estado;
+    var matchEstado = pestanaDashActual === "todas" || r.estadoSifen === pestanaDashActual;
     var matchBuscar = !buscar ||
       (r.rucProveedor && r.rucProveedor.toLowerCase().indexOf(buscar) !== -1) ||
       (r.numDocRet    && r.numDocRet.toLowerCase().indexOf(buscar)    !== -1) ||
@@ -197,7 +274,9 @@ function renderDashboard() {
     } else if (r.estadoSifen === "ENVIADO" && r.respuestaSifen) {
       accion = "<button class='btn-reenviar' onclick='verRespuesta(\"" + r.numDocRet + "\")' style='color:#0c447c;border-color:#b5d4f4'>Ver XML</button>";
     }
+    var checked = seleccionadosDash.indexOf(String(r.id)) !== -1 ? "checked" : "";
     html += "<tr>" +
+      "<td><input type='checkbox' class='dash-check-item' data-id='" + r.id + "' " + checked + " onchange='toggleSeleccionDash(this.dataset.id, this)'></td>" +
       "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + "</td>" +
       "<td style='font-size:11px'>" + (r.rucProveedor || "—") + "</td>" +
       "<td><strong style='font-size:12px'>" + (r.razonSocial || "—") + "</strong></td>" +
@@ -215,7 +294,7 @@ function renderDashboard() {
 
 function badgeDashboard(estado) {
   var map    = { "ENVIADO":"badge-procesado", "PENDIENTE":"badge-pendiente", "ERROR":"badge-rechazado", "FISICA_MANUAL":"badge-sinauth", "SIMULADO":"badge-anulado", "APROBADO":"badge-procesado" };
-  var labels = { "ENVIADO":"Enviado", "PENDIENTE":"Pendiente", "ERROR":"Error", "FISICA_MANUAL":"Fisica manual", "SIMULADO":"Simulado", "APROBADO":"Aprobado" };
+  var labels = { "ENVIADO":"Enviado", "PENDIENTE":"Pendiente de envio", "ERROR":"Error", "FISICA_MANUAL":"Fisica manual", "SIMULADO":"Simulado", "APROBADO":"Aprobado" };
   return "<span class='badge " + (map[estado] || "") + "'>" + (labels[estado] || estado) + "</span>";
 }
 
@@ -254,7 +333,7 @@ function renderLog(logs) {
     else if (detalle.indexOf("Enviado") !== -1)    estadoBadge = "<span class='badge badge-procesado'>Enviado</span>";
     else if (detalle.indexOf("Error") !== -1 || detalle.indexOf("dCodRes") !== -1) estadoBadge = "<span class='badge badge-rechazado'>Error</span>";
     else if (detalle.indexOf("fisica") !== -1 || detalle.indexOf("Fisica") !== -1) estadoBadge = "<span class='badge badge-sinauth'>Fisica</span>";
-    else if (detalle.indexOf("Pendiente") !== -1)  estadoBadge = "<span class='badge badge-pendiente'>Pendiente</span>";
+    else if (detalle.indexOf("Pendiente") !== -1)  estadoBadge = "<span class='badge badge-pendiente'>Pendiente de envio</span>";
     else estadoBadge = "<span class='badge badge-anulado'>" + detalle.substring(0, 12) + "</span>";
 
     var fecha = formatearFecha(l.fecha);
@@ -478,7 +557,7 @@ function renderTabla() {
 
 function generarBadge(estado) {
   if (estado === "PENDIENTE_AUTH") return "<span class='badge badge-sinauth'>Sin autorizacion</span>";
-  if (estado === "PENDIENTE")      return "<span class='badge badge-pendiente'>Pendiente</span>";
+  if (estado === "PENDIENTE")      return "<span class='badge badge-pendiente'>Pendiente de envio</span>";
   if (estado === "PROCESADO")      return "<span class='badge badge-procesado'>Procesado</span>";
   if (estado === "RECHAZADO")      return "<span class='badge badge-rechazado'>Rechazado</span>";
   if (estado === "ANULADO")        return "<span class='badge badge-anulado'>Anulado</span>";
@@ -507,8 +586,18 @@ function toggleSeleccion(id, checkbox) {
 }
 function seleccionarTodas() {
   seleccionados = [];
+  var buscar = document.getElementById("filtro-buscar").value.toLowerCase();
+  var mesFiltro = document.getElementById("filtro-mes").value;
   for (var i = 0; i < facturas.length; i++) {
-    if (facturas[i].estado === "PENDIENTE" && facturas[i].aplicaRetencion) seleccionados.push(facturas[i].id);
+    var f = facturas[i];
+    // Respetar filtros activos
+    if (pestanaActual !== "todas" && f.estado !== pestanaActual) continue;
+    if (buscar !== "" && f.proveedor.toLowerCase().indexOf(buscar) === -1 && f.ruc.indexOf(buscar) === -1) continue;
+    if (mesFiltro !== "" && obtenerMesFactura(f.fecha) !== mesFiltro) continue;
+    // Seleccionar todas las pendientes visibles
+    if (f.estado === "PENDIENTE" || f.estado === "PENDIENTE_AUTH") {
+      seleccionados.push(f.id);
+    }
   }
   renderTabla();
 }
