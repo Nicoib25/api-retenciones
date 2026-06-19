@@ -1,4 +1,4 @@
-// =============================================
+1// =============================================
 // CONFIGURACION
 // =============================================
 var URL_API = "http://localhost:8080";
@@ -153,12 +153,6 @@ function cargarDashboard() {
   fetch(URL_API + "/retenciones/dashboard")
     .then(function(r) { if (!r.ok) throw new Error("Error al cargar dashboard"); return r.json(); })
     .then(function(data) {
-
-      //*debug
-      console.debug('data de API: /retenciones/dashboard');
-      console.debug(data);
-
-
       document.getElementById("dash-enviadas").textContent   = data.resumen.enviadas   || 0;
       document.getElementById("dash-pendientes").textContent = data.resumen.pendientes || 0;
       document.getElementById("dash-errores").textContent    = data.resumen.errores    || 0;
@@ -217,15 +211,8 @@ function actualizarInfoSelDash() {
   if (el) el.textContent = n + " factura" + (n !== 1 ? "s" : "") + " seleccionada" + (n !== 1 ? "s" : "");
   var btn = document.getElementById("btn-generar-tesaka");
   if (btn) btn.style.display = n > 0 ? "inline-block" : "none";
-
-  // CONTROL DEL BOTÓN DESCARGAR TXT: Se activa si hay al menos 1 seleccionada
-  var btnDescargar = document.getElementById("btn-descargar-txt");
-  if (btnDescargar) {
-    btnDescargar.disabled = (n === 0);
-  }
 }
 
-//TODO. borrar función, no usada
 function generarTesaka() {
   if (seleccionadosDash.length === 0) { mostrarMensaje("Selecciona al menos una factura.", "error"); return; }
   var btn = document.getElementById("btn-generar-tesaka");
@@ -293,6 +280,7 @@ function renderDashboard() {
       "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + "</td>" +
       "<td style='font-size:11px'>" + (r.rucProveedor || "—") + "</td>" +
       "<td><strong style='font-size:12px'>" + (r.razonSocial || "—") + "</strong></td>" +
+      "<td style='font-family:monospace;font-size:11px'>" + (r.numTimbrado || "—") + "</td>" +
       "<td style='font-family:monospace;font-size:11px'>" + (r.nroFactura || "—") + "</td>" +
       "<td class='der'>Gs. " + formatearNumero(r.baseImponible) + "</td>" +
       "<td class='der'><strong>Gs. " + formatearNumero(r.montoRetencion) + "</strong></td>" +
@@ -633,143 +621,20 @@ function mostrarMensaje(texto, tipo) {
   el.className = "mensaje " + tipo;
   setTimeout(function() { el.className = "mensaje oculto"; }, 4000);
 }
-
-function getFechaHoraLocal() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-}
-
-/*versión1, funciona en el validador de json, pero da error al subirlo a TESAKA
-function descargarTxtRetencionesPorEnviarTesaka() {
-  if (seleccionadosDash.length === 0) {
+function descargarTxt() {
+  // Usar seleccionados si hay, sino todos los visibles
+  var datos;
+  if (seleccionadosDash.length > 0) {
+    datos = retencionesDB.filter(function(r) {
+      return seleccionadosDash.indexOf(String(r.id)) !== -1;
+    });
+  } else {
     mostrarMensaje("Selecciona al menos una factura para descargar.", "error");
     return;
   }
 
-  var arregloJson = [];
-
-  // Recorremos los IDs seleccionados y buscamos su información en retencionesDB
-  seleccionadosDash.forEach(function(id) {
-    var r = retencionesDB.find(function(x) { return String(x.id) === String(id); });
-    if (r) {
-      
-      // Separar el RUC del Dígito Verificador si viene con guión (ej: 80078258-5)
-      var rucLimpio = r.rucProveedor || "—";
-      var dvLimpio = "5"; // Valor por defecto del ejemplo
-      if (rucLimpio.indexOf("-") !== -1) {
-        var partesRuc = rucLimpio.split("-");
-        rucLimpio = partesRuc[0];
-        dvLimpio = partesRuc[1];
-      }
-
-      // Estructuramos el objeto respetando fielmente las llaves de tu ejemplo
-      var objetoRetencion = {
-        "detalle": [
-          {
-            "cantidad": 1, //TODO. ajustar con datos de la factura
-            "tasaAplica": "10",
-            "precioUnitario": 0, //TODO. ajustar con datos de la factura
-            "descripcion": "Servicio soporte página web" //TODO. ajustar con datos de la factura: servicio, sin IVA, sería exento de IVA
-          },
-          {
-            "cantidad": 2, //TODO. ajustar con datos de la factura
-            "tasaAplica": "5",
-            "precioUnitario": 0, //TODO. ajustar con datos de la factura
-            "descripcion": "CON IMPUESTO AL 5" //TODO. ajustar con datos de la factura: servicio, con iva de 5%
-          },
-          {
-            "cantidad": 5, //TODO. ajustar con datos de la factura
-            "tasaAplica": "10",
-            "precioUnitario": 0, //TODO. ajustar con datos de la factura
-            "descripcion": "CON IMPUESTO AL 10" //TODO. ajustar con datos de la factura: servicio, con iva de 10%
-          }
-        ],
-        "retencion": {
-          "fecha": new Date().toISOString().split('T')[0],
-          "moneda": (r.moneda === "USD" || r.moneda === "DL") ? "USD" : "PYG",
-          "tipoCambio": Math.round(r.tipoCambio || 6000), //TODO. ajustar buscando el tipo de cambio en el sistema SASYF
-          "retencionRenta": true,
-          "conceptoRenta": "", //TODO. ajustar con datos de la factura
-          "ivaPorcentaje5": 0,
-          "ivaPorcentaje10": 30,
-          "rentaCabezasBase": 0,
-          "rentaCabezasCantidad": 0,
-          "rentaToneladasBase": 0,
-          "rentaToneladasCantidad": 0,
-          "rentaPorcentaje": 10, //TODO. ajustar con datos de la factura
-          "retencionIva": true,
-          "conceptoIva": "IVA.1"
-        },
-        "informado": {
-          "situacion": "CONTRIBUYENTE", //TODO. investigar el valor que debe ir allí, acorde al proveedor
-          "nombre": r.razonSocial || "—", // DINÁMICO: razon_social
-          //TODO. campos se quitan porque la implementación de TESAKA dice que no los soporta
-          //"ruc": rucLimpio,                // DINÁMICO: ruc_proveedor (sin DV)
-          //"dv": dvLimpio,                  // DINÁMICO: DV si se extrae del RUC
-          "domicilio": "", //TODO. ajustar valor, segun datos de la factura: domicilio de proveedor 
-          "tipoIdentificacion": "IDENTIFICACION_TRIBUTARIA", //ruc
-          "identificacion": r.rucProveedor,
-          "direccion": "EUSEBIO LILLO 2173 ENTRE BELGICA Y CARMONA, ASUNCION", //TODO. ajiustar segun factura: direccion de proveedor
-          "correoElectronico": "comercial@freelancer.com.py", //TODO. ajustar segun factura: email de proveedor
-          "pais": "PY", //TODO. ajustar segun factura: pais de proveedor
-          "telefono": "0985900735", //TODO. ajustar segun factura: telefono de proveedor
-          "tieneRepresentante": true,
-          "tieneBeneficiario": true,
-          "representante": {
-            "nombre": "",
-            "tipoIdentificacion": "RUC",
-            "identificacion": "-"
-          },
-          "beneficiario": {
-            "nombre": "",
-            "tipoIdentificacion": "RUC",
-            "identificacion": "-"
-          }
-        },
-        "transaccion": {
-          "numeroComprobanteVenta": r.nroFactura || "SIN NUMERO", //OJO: puede ser sin número 
-          "condicionCompra": "CREDITO", //TODO. ajustar valor segun datos de la factura. valores posibles: CONTADO /  CREDITO
-          "tipoComprobante": 1, //TODO. ajustar valor segun datos de la factura
-          "fecha": r.fechaEnvio ? String(r.fechaEnvio).substring(0, 10) : "",
-          "numeroTimbrado": "0", //TODO. ajustado a 0 por indicaciones de TESAKA
-          "cuotas": 0
-        },
-        "atributos": {
-          "fechaCreacion": new Date().toISOString().split('T')[0],
-          "fechaHoraCreacion": getFechaHoraLocal()
-        }
-      };
-
-      arregloJson.push(objetoRetencion);
-    }
-  });
-
-  // Convertimos el arreglo completo a una cadena JSON con indentación limpia
-  var contenidoTxt = JSON.stringify(arregloJson, null, 2);
-
-  // Crear el Blob y forzar la descarga del archivo plano .txt conteniendo el JSON
-  var blob = new Blob([contenidoTxt], { type: "text/plain;charset=utf-8;" });
-  var url = window.URL.createObjectURL(blob);
-  var a = document.createElement("a");
-  
-  var fechaHoy = new Date().toISOString().substring(0, 10);
-  a.download = "tesaka_retenciones_" + fechaHoy + ".txt";
-  a.href = url;
-  a.style.display = "none";
-  
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
-
-  mostrarMensaje(seleccionadosDash.length + " registro/s listados en formato JSON dentro del TXT ✓", "ok");
-}
-*/
-
-function descargarTxtRetencionesPorEnviarTesaka() {
-  if (seleccionadosDash.length === 0) {
-    mostrarMensaje("Selecciona al menos una factura para descargar.", "error");
+  if (datos.length === 0) {
+    mostrarMensaje("No hay datos para descargar.", "error");
     return;
   }
 
@@ -869,17 +734,22 @@ function descargarTxtRetencionesPorEnviarTesaka() {
   var blob = new Blob([contenidoTxt], { type: "text/plain;charset=utf-8;" });
   var url = window.URL.createObjectURL(blob);
   var a = document.createElement("a");
-  
-  var fechaHoy = new Date().toISOString().substring(0, 10);
-  a.download = "tesaka_retenciones_" + fechaHoy + ".txt";
   a.href = url;
-  a.style.display = "none";
-  
+  a.download = "retenciones_" + new Date().toISOString().substring(0, 10) + ".txt";
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
-
-  mostrarMensaje(seleccionadosDash.length + " registro/s listados en formato JSON dentro del TXT ✓", "ok");
+  mostrarMensaje("Archivo TXT descargado ✓", "ok");
 }
+
+function padR(str, len) {
+  str = String(str || "");
+  return str.length >= len ? str.substring(0, len) : str + " ".repeat(len - str.length);
+}
+function padL(str, len) {
+  str = String(str || "");
+  return str.length >= len ? str.substring(0, len) : " ".repeat(len - str.length) + str;
+}
+
 setInterval(function() { if (vistaActual === "facturas") cargarFacturas(); }, 60000);
