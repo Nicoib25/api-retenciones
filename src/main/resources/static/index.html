@@ -195,14 +195,12 @@
         <div class="barra-acciones">
           <div class="filtros">
             <input type="text" id="dash-filtro-ruc" placeholder="Buscar RUC o Nº doc..." oninput="filtrarDashboard()">
-            <button class="btn-secundario" onclick="cargarDashboard()">&#8635; Actualizar</button>
+            <button class="btn-azul" onclick="cargarDashboard()">&#8635; Actualizar</button>
+            <button class="btn-azul" onclick="descargarTxt()">&#11015; Descargar TXT</button>
           </div>
           <div class="acciones-sel">
-            <!-- contador de facturas seleccionadas -->
             <span id="dash-info-sel">0 facturas seleccionadas</span>
-            <!-- descarga el txt conteniendo el arreglo de json con las facturas seleccionadas -->
-            <button class="btn-aprobar" id="btn-descargar-txt" onclick="descargarTxtRetencionesPorEnviarTesaka()" disabled>&#11123; Descargar TXT</button>          </div>
-            <!--button class="btn-aprobar" id="btn-generar-tesaka" onclick="generarTesaka()" style="display:none">&#10003; Generar TESAKA</button-->
+            <button class="btn-aprobar" id="btn-generar-tesaka" onclick="generarTesaka()" style="display:none">&#10003; Generar TESAKA</button>
             <button class="btn-secundario" onclick="limpiarSeleccionDash()">Limpiar selección</button>
           </div>
         </div>
@@ -213,9 +211,10 @@
             <thead>
               <tr>
                 <th style="width:36px"><input type="checkbox" id="dash-check-all" onchange="toggleTodosDash(this)"></th>
-                <th>Nº Doc Ret</th>
+                <th>Comprobante</th>
                 <th>RUC Proveedor</th>
                 <th>Razón Social</th>
+                <th>Timbrado</th>
                 <th>Nº Factura</th>
                 <th class="der">Base Imponible</th>
                 <th class="der">Retención</th>
