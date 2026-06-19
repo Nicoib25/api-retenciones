@@ -787,10 +787,10 @@ function descargarTxtRetencionesPorEnviarTesaka() {
       if (r.rucProveedor) {
         var guionIndex = r.rucProveedor.indexOf("-");
         if (guionIndex !== -1) {
-          rucLimpio = r.rucProveedor.substring(0, guionIndex);
-          dvLimpio = r.rucProveedor.substring(guionIndex + 1);
+          rucLimpio = r.rucProveedor.substring(0, guionIndex).trim();
+          dvLimpio = r.rucProveedor.substring(guionIndex + 1).trim();
         } else {
-          rucLimpio = r.rucProveedor;
+          rucLimpio = r.rucProveedor.trim();
           dvLimpio = "0"; // Valor por defecto si no tiene DV
         }
       }
@@ -814,7 +814,7 @@ function descargarTxtRetencionesPorEnviarTesaka() {
           "ruc": rucLimpio,
           "dv": dvLimpio,
           "tipoIdentificacion": "IDENTIFICACION_TRIBUTARIA", 
-          "identificacion": rucProveedor,
+          "identificacion": rucLimpio + '-' + dvLimpio,
           "nombre": r.razonSocial || "---",
           "domicilio": "Domicilio Fiscal", // Obligatorio por Schema // TODO. ajustar segun factura
           "direccion": "Dirección Proveedor", // Obligatorio por Schema // TODO. ajustar segun factura
@@ -830,7 +830,7 @@ function descargarTxtRetencionesPorEnviarTesaka() {
           "tipoComprobante": 1, // Siempre será 1 = Factura estándar
           "numeroComprobanteVenta": r.nroFactura || "001-001-0000000", 
           "fecha": r.fechaEnvio ? String(r.fechaEnvio).substring(0, 10) : '-',
-          "numeroTimbrado": "0" // Ajustado a "0" por indicaciones de Tesakã
+          "numeroTimbrado": r.timbrado || "0" // Ajustado a "0" por indicaciones de Tesakã
         },
         "detalle": [
           {
@@ -854,7 +854,7 @@ function descargarTxtRetencionesPorEnviarTesaka() {
           "rentaToneladasBase": 0,
           "rentaToneladasCantidad": 0,
           "ivaPorcentaje5": r.ivaPorcentaje5 || 0,
-          "ivaPorcentaje10": r.ivaPorcentaje10 || 30 // Valor por defecto común en retenciones IVA (30%)
+          "ivaPorcentaje10": 30 // Valor por defecto para DUTRIEC en retenciones IVA (30%)
         }
       };
 
