@@ -57,8 +57,9 @@ public class RetencionRepository {
     /**
      * Actualiza el estado de envío TESAKA después de descargar el TXT
      * Valores posibles:
-     * PENDIENTE_ENVIO
-     * ENVIADO_TESAKA
+     * TESAKA_ENVIO_PENDIENTE
+     * TESAKA_APROBADO
+     * TESAKA_RECHAZADO
      * @param ids Lista de IDs de retenciones
      * @param estado Nuevo estado (ej: "TESAKA_PENDIENTE")
      * @return Cantidad de registros actualizados

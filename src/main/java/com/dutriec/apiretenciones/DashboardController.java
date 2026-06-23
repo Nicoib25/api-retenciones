@@ -93,8 +93,8 @@ public class DashboardController {
                 "FROM retenciones_enviadas " +
                 "ORDER BY fecha_creacion DESC LIMIT 200";
             //*debug
-            System.out.println("obtenerRetenciones - mariaDb.queryForList:");
-            System.out.println(sqlQuery);
+            //System.out.println("obtenerRetenciones - mariaDb.queryForList:");
+            //System.out.println(sqlQuery);
             //*debug-end
 
             return mariaDb.queryForList(sqlQuery);
@@ -122,7 +122,7 @@ public class DashboardController {
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
-    // Actualiza el estado a TESAKA_PENDIENTE
+    // Actualiza el estado de facturas enviadas o a enviar a Tesaká
     @PostMapping("/actualizar-tesaka")
     public ResponseEntity<?> actualizarEstadoTesaka(@RequestBody Map<String, Object> request) {
         @SuppressWarnings("unchecked")
