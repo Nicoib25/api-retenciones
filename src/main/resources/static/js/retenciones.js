@@ -1,4 +1,4 @@
-// =============================================
+1// =============================================
 // CONFIGURACION
 // =============================================
 var URL_API = "http://localhost:8080";
@@ -215,6 +215,13 @@ function actualizarInfoSelDash() {
   var n = seleccionadosDash.length;
   var el = document.getElementById("dash-info-sel");
   if (el) el.textContent = n + " factura" + (n !== 1 ? "s" : "") + " seleccionada" + (n !== 1 ? "s" : "");
+  
+  // Habilitar/Deshabilitar el botón "Descargar TXT" dinámicamente
+  var btnDescargar = document.getElementById("btn-descargar-txt");
+  if (btnDescargar) {
+    btnDescargar.disabled = (n === 0);
+  }
+
   var btn = document.getElementById("btn-generar-tesaka");
   if (btn) btn.style.display = n > 0 ? "inline-block" : "none";
 }
@@ -630,6 +637,24 @@ function mostrarMensaje(texto, tipo) {
   el.className = "mensaje " + tipo;
   setTimeout(function() { el.className = "mensaje oculto"; }, 4000);
 }
+
+/**
+ * Devuelve fecha y hora local en formato: DD-MM-AAAA HH:MM
+ */
+function getFechaHoraLocal() {
+    const ahora = new Date();
+    
+    const dia = String(ahora.getDate()).padStart(2, '0');
+    const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+    const anio = ahora.getFullYear();
+    
+    const horas = String(ahora.getHours()).padStart(2, '0');
+    const minutos = String(ahora.getMinutes()).padStart(2, '0');
+    
+    return `${dia}-${mes}-${anio} ${horas}:${minutos}`;
+}
+
+//descarga txt cuyo contenido es un arreglo de json, cada elemento del arreglo es una factura a enviar a SIFEN por TESAKA
 function descargarTxt() {
   // Usar seleccionados si hay, sino todos los visibles
   var datos;
@@ -647,46 +672,100 @@ function descargarTxt() {
     return;
   }
 
-  var lineas = [];
-  var sep = "==================================================";
+  var arregloJson = [];
 
-  lineas.push("RETENCIONES ENVIADAS - DUTRIEC SA");
-  lineas.push("RUC: 80015056-2");
-  lineas.push("Fecha de generacion: " + new Date().toLocaleDateString("es-PY") + " " + new Date().toLocaleTimeString("es-PY"));
-  lineas.push(sep);
-  lineas.push("");
+  // Recorremos los IDs seleccionados y buscamos su información en retencionesDB
+  seleccionadosDash.forEach(function(id) {
+    var r = retencionesDB.find(function(x) { return String(x.id) === String(id); });
+    if (r) {
+      
+      // Separar el RUC del Dígito Verificador si viene con guión (ej: 80078258-5)
+      var rucLimpio = null;
+      var dvLimpio = null;
+      
+      if (r.rucProveedor) {
+        var guionIndex = r.rucProveedor.indexOf("-");
+        if (guionIndex !== -1) {
+          rucLimpio = r.rucProveedor.substring(0, guionIndex).trim();
+          dvLimpio = r.rucProveedor.substring(guionIndex + 1).trim();
+        } else {
+          rucLimpio = r.rucProveedor.trim();
+          dvLimpio = "0"; // Valor por defecto si no tiene DV
+        }
+      }
 
-  lineas.push(
-    padR("N DOC RET", 20) +
-    padR("RUC PROVEEDOR", 18) +
-    padR("RAZON SOCIAL", 30) +
-    padR("N FACTURA", 20) +
-    padL("BASE IMPONIBLE", 16) +
-    padL("RETENCION", 14) +
-    padR("ESTADO", 20) +
-    padR("FECHA ENVIO", 18)
-  );
-  lineas.push("-".repeat(156));
+      // Determinar la tasa del IVA que aplica al detalle de la retención
+      var tasaDetalle = "10"; 
+      if (r.ivaPorcentaje5 > 0) {
+        tasaDetalle = "5";
+      } else if (r.baseImponible === 0 || (!r.ivaPorcentaje10 && !r.ivaPorcentaje5)) {
+        tasaDetalle = "0";
+      }
 
-  datos.forEach(function(r) {
-    lineas.push(
-      padR(r.numDocRet || "-", 20) +
-      padR(r.rucProveedor || "-", 18) +
-      padR((r.razonSocial || "-").substring(0, 28), 30) +
-      padR(r.nroFactura || "-", 20) +
-      padL("Gs. " + formatearNumero(r.baseImponible), 16) +
-      padL("Gs. " + formatearNumero(r.montoRetencion), 14) +
-      padR(r.estadoSifen || "-", 20) +
-      padR(formatearFecha(r.fechaEnvio), 18)
-    );
+      // Estructuramos el objeto respetando fielmente el JSON Schema brindado
+      var objetoRetencion = {
+        "atributos": {
+          "fechaCreacion": new Date().toISOString().split('T')[0],
+          "fechaHoraCreacion": getFechaHoraLocal()
+        },
+        "informado": {
+          "situacion": "CONTRIBUYENTE", // Valor dinámico tentativo. Opciones: CONTRIBUYENTE, NO_CONTRIBUYENTE, NO_RESIDENTE
+          "ruc": rucLimpio,
+          "dv": dvLimpio,
+          "tipoIdentificacion": "IDENTIFICACION_TRIBUTARIA", 
+          "identificacion": rucLimpio + '-' + dvLimpio,
+          "nombre": r.razonSocial || "---",
+          "domicilio": "Domicilio Fiscal", // Obligatorio por Schema // TODO. ajustar segun factura
+          "direccion": "Dirección Proveedor", // Obligatorio por Schema // TODO. ajustar segun factura
+          "correoElectronico": "proveedor@email.com", // Obligatorio por Schema
+          "telefono": "000000", // Obligatorio por Schema
+          "pais": "PY",
+          "tieneRepresentante": false,
+          "tieneBeneficiario": false
+        },
+        "transaccion": {
+          "condicionCompra": "CREDITO", // Valores válidos en Schema: CONTADO / CREDITO // TODO. ajustar segun factura
+          "cuotas": 0, //Siempre será 0, pq la retención no se cobra en cuotas
+          "tipoComprobante": 1, // Siempre será 1 = Factura estándar
+          "numeroComprobanteVenta": r.nroFactura || "001-001-0000000", 
+          "fecha": r.fechaEnvio ? String(r.fechaEnvio).substring(0, 10) : '-',
+          "numeroTimbrado": r.timbrado || "0" // Ajustado a "0" por indicaciones de Tesakã
+        },
+        "detalle": [
+          {
+            "cantidad": 1,
+            "tasaAplica": tasaDetalle,
+            "precioUnitario": Number(r.baseImponible) || 0,
+            "descripcion": "Retención correspondiente a Comprobante de Venta Nro: " + (r.nroFactura || "—") //TODO. ajustar segun factura
+          }
+        ],
+        "retencion": {
+          "fecha": new Date().toISOString().split('T')[0], //fecha actual
+          "moneda": (r.moneda === "USD" || r.moneda === "DL") ? "USD" : "PYG",
+          "tipoCambio": Math.round(r.tipoCambio || 1),
+          "retencionRenta": true,
+          "conceptoRenta": "COMERCIAL_INDUSTRIAL_SERVICIOS.1", 
+          "retencionIva": true,
+          "conceptoIva": "IVA.1",
+          "rentaPorcentaje": 10,
+          "rentaCabezasBase": 0,
+          "rentaCabezasCantidad": 0,
+          "rentaToneladasBase": 0,
+          "rentaToneladasCantidad": 0,
+          "ivaPorcentaje5": r.ivaPorcentaje5 || 0,
+          "ivaPorcentaje10": 30 // Valor por defecto para DUTRIEC en retenciones IVA (30%)
+        }
+      };
+
+      arregloJson.push(objetoRetencion);
+    }
   });
 
-  lineas.push("-".repeat(156));
-  lineas.push("Total registros: " + datos.length);
-  lineas.push("");
+  // Convertimos el arreglo completo a una cadena JSON con indentación limpia de 2 espacios
+  var contenidoTxt = JSON.stringify(arregloJson, null, 2);
 
-  var txt = lineas.join("\n");
-  var blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+  // Crear el Blob y forzar la descarga del archivo plano .txt conteniendo el JSON
+  var blob = new Blob([contenidoTxt], { type: "text/plain;charset=utf-8;" });
   var url = window.URL.createObjectURL(blob);
   var a = document.createElement("a");
   a.href = url;
@@ -696,6 +775,43 @@ function descargarTxt() {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
   mostrarMensaje("Archivo TXT descargado ✓", "ok");
+
+  //luego de descargar el txt, actualizar estado de las facturas a TESAKA_ENVIO_PENDIENTE
+  actualizarEstadoTesakaPendienteEnvio(seleccionadosDash);
+
+  // Deseleccionar todas las filas, desactivar el botón y limpiar contadores
+  limpiarSeleccionDash();
+}
+
+// Actualiza el estado a TESAKA_ENVIO_PENDIENTE después de descargar el TXT
+function actualizarEstadoTesakaPendienteEnvio(ids) {
+  if (!ids || ids.length === 0) return;
+
+  fetch(URL_API + "/retenciones/actualizar-tesaka", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      ids: ids.map(Number),
+      estado: "TESAKA_ENVIADO"
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error("Error en actualización");
+    return r.json();
+  })
+  .then(function() {
+    mostrarMensaje("Estado actualizado a TESAKA_PENDIENTE", "ok");
+    // Recargar dashboard para ver los cambios
+    cargarDashboard();
+    // Limpiar selección
+    seleccionadosDash = [];
+    actualizarInfoSelDash();
+  })
+  .catch(function(err) {
+    console.error(err);
+    mostrarMensaje("TXT descargado, pero no se pudo actualizar el estado", "error");
+    cargarDashboard(); // igual recargamos
+  });
 }
 
 function padR(str, len) {

@@ -1,6 +1,7 @@
 package com.dutriec.apiretenciones;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +13,12 @@ import java.util.*;
 public class DashboardController {
 
     private final JdbcTemplate mariaDb;
+    private final RetencionRepository retencionRepository;
 
-    public DashboardController(@Qualifier("mariadbJdbcTemplate") JdbcTemplate mariaDb) {
-        this.mariaDb = mariaDb;
+    public DashboardController(@Qualifier("mariadbJdbcTemplate") JdbcTemplate mariaDb,
+            RetencionRepository retencionRepository) {
+                this.mariaDb = mariaDb;
+                this.retencionRepository = retencionRepository;
     }
 
     @GetMapping("/dashboard")
@@ -70,8 +74,7 @@ public class DashboardController {
 
     private List<Map<String, Object>> obtenerRetenciones() {
         try {
-            return mariaDb.queryForList(
-                "SELECT " +
+            String sqlQuery = "SELECT " +
                 "  id, " +
                 "  id_factura_orig   AS idFacturaOrig, " +
                 "  nro_comprobante   AS numDocRet, " +
@@ -91,8 +94,13 @@ public class DashboardController {
                 "  fecha_envio       AS fechaEnvio, " +
                 "  fecha_creacion    AS fechaCreacion " +
                 "FROM retenciones_enviadas " +
-                "ORDER BY fecha_creacion DESC LIMIT 200"
-            );
+                "ORDER BY fecha_creacion DESC LIMIT 200";
+            //*debug
+            //System.out.println("obtenerRetenciones - mariaDb.queryForList:");
+            //System.out.println(sqlQuery);
+            //*debug-end
+
+            return mariaDb.queryForList(sqlQuery);
         } catch (Exception e) { return new ArrayList<>(); }
     }
 
@@ -116,4 +124,24 @@ public class DashboardController {
             );
         } catch (Exception e) { return new ArrayList<>(); }
     }
+
+    // Actualiza el estado de facturas enviadas o a enviar a Tesaká
+    @PostMapping("/actualizar-tesaka")
+    public ResponseEntity<?> actualizarEstadoTesaka(@RequestBody Map<String, Object> request) {
+        @SuppressWarnings("unchecked")
+        List<Integer> ids = (List<Integer>) request.get("ids");
+        String estado = (String) request.get("estado");
+
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "No se enviaron IDs"));
+        }
+
+        int actualizados = retencionRepository.actualizarEstadoEnvioTesaka(ids, estado);
+
+        return ResponseEntity.ok(Map.of(
+            "mensaje", "Se actualizaron " + actualizados + " retenciones a " + estado,
+            "registros_afectados", actualizados
+        ));
+    }
+
 }

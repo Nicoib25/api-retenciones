@@ -1,10 +1,10 @@
 package com.dutriec.apiretenciones;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
 
 /**
  * Repositorio MariaDB para documentos de retención.
@@ -53,4 +53,41 @@ public class RetencionRepository {
             return "PENDIENTE_TIMBRADO";
         }
     }
+
+    /**
+     * Actualiza el estado de envío TESAKA después de descargar el TXT
+     * Valores posibles:
+     * TESAKA_ENVIO_PENDIENTE
+     * TESAKA_APROBADO
+     * TESAKA_RECHAZADO
+     * @param ids Lista de IDs de retenciones
+     * @param estado Nuevo estado (ej: "TESAKA_PENDIENTE")
+     * @return Cantidad de registros actualizados
+     */
+    @SuppressWarnings("null")
+    public int actualizarEstadoEnvioTesaka(List<Integer> ids, String estado) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+
+        // Construir los placeholders dinámicos: ?,?,?...
+        String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+
+        String sql = """
+            UPDATE retenciones_enviadas 
+            SET estado_envio_tesaka = ?, 
+                fecha_actualizacion = NOW() 
+            WHERE id IN (%s)
+            """.formatted(placeholders);
+
+        // Preparar parámetros: primero el estado, luego los IDs
+        Object[] params = new Object[ids.size() + 1];
+        params[0] = estado;
+        for (int i = 0; i < ids.size(); i++) {
+            params[i + 1] = ids.get(i);
+        }
+
+        return mariaDb.update(sql, params);
+    }
+
 }
