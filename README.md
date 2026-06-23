@@ -61,6 +61,7 @@ Editar `src/main/resources/application.properties` con las credenciales de Maria
 ### 5. Compilar y ejecutar
 
 ```bash
+mvn clean compile
 mvnw spring-boot:run
 ```
 
