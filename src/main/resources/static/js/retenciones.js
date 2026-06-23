@@ -778,7 +778,7 @@ function descargarTxt() {
 function actualizarEstadoTesakaPendienteEnvio(ids) {
   if (!ids || ids.length === 0) return;
 
-  fetch(URL_API + "/retenciones/actualizar-tesaka", {
+  fetch(URL_API + "/retenciones/actualizar-estado-tesaka", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ 
