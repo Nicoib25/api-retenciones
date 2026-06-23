@@ -107,7 +107,7 @@
             <select id="filtro-mes" onchange="renderTabla()">
               <option value="">Todos los meses</option>
               <option value="01">Enero 2026</option>
-              <option value="02">Febrero 2026</option>
+              <option value="02">Febrero 2026</otodosption>
               <option value="03">Marzo 2026</option>
               <option value="04">Abril 2026</option>
               <option value="05">Mayo 2026</option>
@@ -185,9 +185,8 @@
 
         <!-- PESTAÑAS DASHBOARD -->
         <div class="pestanas" style="margin-bottom:12px">
-          <button class="pestana activa" onclick="cambiarPestanaDash('todas', this)">Todos</button>
           <button class="pestana" onclick="cambiarPestanaDash('PENDIENTE', this)">Pendiente de envío</button>
-          <button class="pestana" onclick="cambiarPestanaDash('TESAKA_GENERADO', this)">Enviados por TESAKA</button>
+          <button class="pestana" onclick="cambiarPestanaDash('TESAKA_GENERADO', this)">Envios Tesaka</button>
           <button class="pestana" onclick="cambiarPestanaDash('ERROR', this)">Error</button>
         </div>
 
