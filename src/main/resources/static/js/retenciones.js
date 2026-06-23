@@ -99,7 +99,10 @@ function cambiarVista(vista, elemento) {
 // =============================================
 function cargarFacturas() {
   document.getElementById("cuerpo-tabla").innerHTML =
-    "<tr><td colspan='10' style='text-align:center;padding:2rem;color:#aaa'>Cargando facturas...</td></tr>";
+    "<tr><td colspan='10' style='text-align:center;padding:2.5rem'>" +
+    "<div class='spinner-carga'></div>" +
+    "<div style='margin-top:10px;color:#aaa;font-size:13px'>Cargando facturas...</div>" +
+    "</td></tr>";
   fetch(URL_API + "/retenciones/pendientes")
     .then(function(r) { if (!r.ok) throw new Error("Error al conectar con la API"); return r.json(); })
     .then(function(datos) {
@@ -149,7 +152,10 @@ function cargarFacturas() {
 // =============================================
 function cargarDashboard() {
   document.getElementById("cuerpo-dashboard").innerHTML =
-    "<tr><td colspan='10' style='text-align:center;padding:2rem;color:#aaa'>Cargando datos...</td></tr>";
+    "<tr><td colspan='11' style='text-align:center;padding:2.5rem'>" +
+    "<div class='spinner-carga'></div>" +
+    "<div style='margin-top:10px;color:#aaa;font-size:13px'>Cargando datos...</div>" +
+    "</td></tr>";
   fetch(URL_API + "/retenciones/dashboard")
     .then(function(r) { if (!r.ok) throw new Error("Error al cargar dashboard"); return r.json(); })
     .then(function(data) {
@@ -294,6 +300,9 @@ function renderDashboard() {
       "<td>" + tipoHtml + "</td>" +
       "<td>" + badgeDashboard(r.estadoSifen) + "</td>" +
       "<td style='font-size:11px'>" + formatearFecha(r.fechaEnvio) + "</td>" +
+      "<td style='font-size:11px;color:#a32d2d'>" + (r.correoProveedor || "—") + "</td>" +
+      "<td style='font-size:11px;color:#a32d2d'>" + (r.telefonoProveedor || "—") + "</td>" +
+      "<td style='font-size:11px;color:#a32d2d'>" + (r.direccionProveedor || "—") + "</td>" +
       "<td>" + accion + "</td>" +
       "</tr>";
   });
@@ -812,6 +821,30 @@ function padR(str, len) {
 function padL(str, len) {
   str = String(str || "");
   return str.length >= len ? str.substring(0, len) : " ".repeat(len - str.length) + str;
+}
+
+// Toggle dropdown Acciones
+function toggleDropdown() {
+  var menu = document.getElementById("dropdown-menu");
+  if (menu) menu.style.display = menu.style.display === "none" ? "block" : "none";
+}
+
+// Cerrar dropdown al hacer click fuera
+document.addEventListener("click", function(e) {
+  var dropdown = document.querySelector(".dropdown-acciones");
+  if (dropdown && !dropdown.contains(e.target)) {
+    var menu = document.getElementById("dropdown-menu");
+    if (menu) menu.style.display = "none";
+  }
+});
+
+// Funciones pendientes de implementar
+function guardarRespuesta() {
+  mostrarMensaje("Funcionalidad pendiente de implementar.", "error");
+}
+
+function verDetalles() {
+  mostrarMensaje("Funcionalidad pendiente de implementar.", "error");
 }
 
 setInterval(function() { if (vistaActual === "facturas") cargarFacturas(); }, 60000);
