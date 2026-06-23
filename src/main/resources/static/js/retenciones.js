@@ -741,6 +741,40 @@ function descargarTxt() {
   document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
   mostrarMensaje("Archivo TXT descargado ✓", "ok");
+
+  //luego de descargar el txt, actualizar estado de las facturas a TESAKA_ENVIO_PENDIENTE
+  actualizarEstadoTesakaPendienteEnvio(seleccionadosDash);
+}
+
+// Actualiza el estado a TESAKA_ENVIO_PENDIENTE después de descargar el TXT
+function actualizarEstadoTesakaPendienteEnvio(ids) {
+  if (!ids || ids.length === 0) return;
+
+  fetch(URL_API + "/retenciones/actualizar-tesaka", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      ids: ids.map(Number),
+      estado: "TESAKA_ENVIO_PENDIENTE"
+    })
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error("Error en actualización");
+    return r.json();
+  })
+  .then(function() {
+    mostrarMensaje("Estado actualizado a TESAKA_PENDIENTE", "ok");
+    // Recargar dashboard para ver los cambios
+    cargarDashboard();
+    // Limpiar selección
+    seleccionadosDash = [];
+    actualizarInfoSelDash();
+  })
+  .catch(function(err) {
+    console.error(err);
+    mostrarMensaje("TXT descargado, pero no se pudo actualizar el estado", "error");
+    cargarDashboard(); // igual recargamos
+  });
 }
 
 function padR(str, len) {
