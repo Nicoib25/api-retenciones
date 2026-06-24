@@ -92,7 +92,8 @@ public class DashboardController {
                 "  cdc               AS cdcProveedor, " +
                 "  motivo_rechazo    AS respuestaSifen, " +
                 "  fecha_envio       AS fechaEnvio, " +
-                "  fecha_creacion    AS fechaCreacion " +
+                "  fecha_creacion    AS fechaCreacion, " +
+                "  estado_envio_tesaka AS estado_envio_tesaka " +
                 "FROM retenciones_enviadas " +
                 "ORDER BY fecha_creacion DESC LIMIT 200";
             //*debug
