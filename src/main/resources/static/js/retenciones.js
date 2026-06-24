@@ -280,10 +280,17 @@ function renderDashboard() {
     var tipoHtml = esFE
       ? "<span class='badge badge-procesado'>Electronica</span>"
       : "<span class='badge badge-sinauth'>Fisica</span>";
-    var accion = "";
+
+    // -- Bloque de Acciones Modificado --
+    var accion = "<div style='display:flex;gap:4px;flex-wrap:wrap'>";
+    
+    // Botones por defecto solicitados para cada línea
+    accion += "<button class='btn-reenviar' onclick='abrirRegistrarRespuesta(\"" + r.id + "\")' style='color:#2d7a0e;border-color:#b5e8b5;background:#f4fbf4'>Registrar Respuesta</button>";
+    accion += "<button class='btn-reenviar' onclick='verDetallesLinea(\"" + r.id + "\")' style='color:#666;border-color:#ccc'>Ver Detalles</button>";
+    
     if (r.estadoSifen === "ERROR") {
-      accion = "<button class='btn-rechazo' onclick='verRechazo(\"" + r.numDocRet + "\")'>Ver rechazo</button>" +
-               "<button class='btn-reenviar' onclick='reenviarRetencion(\"" + r.id + "\")' style='margin-left:4px'>Reenviar</button>";
+      accion = "<button class='btn-rechazo' onclick='verRechazo(\"" + r.numDocRet + "\")'>Ver rechazo</button>";
+               //+ "<button class='btn-reenviar' onclick='reenviarRetencion(\"" + r.id + "\")' style='margin-left:4px'>Reenviar</button>";
     } else if (r.estadoSifen === "ENVIADO" && r.respuestaSifen) {
       accion = "<button class='btn-reenviar' onclick='verRespuesta(\"" + r.numDocRet + "\")' style='color:#0c447c;border-color:#b5d4f4'>Ver XML</button>";
     }
@@ -845,6 +852,94 @@ function guardarRespuesta() {
 
 function verDetalles() {
   mostrarMensaje("Funcionalidad pendiente de implementar.", "error");
+}
+
+// =============================================
+// NUEVAS FUNCIONES: REGISTRAR RESPUESTA Y DETALLES
+// =============================================
+
+function abrirRegistrarRespuesta(id) {
+  var r = retencionesDB.find(function(x) { return String(x.id) === String(id); });
+  if (!r) return;
+
+  // Cargar datos preexistentes o por defecto en el modal
+  document.getElementById("reg-id").value = r.id;
+  document.getElementById("reg-numcomprobante").value = r.numDocRet || r.nroFactura || "";
+  document.getElementById("reg-estado").value = (r.estadoSifen === "APROBADO") ? "APROBADO" : "ENVIADO";
+  document.getElementById("reg-estado").value = "APROBADO"; //valor por defecto en el modal
+  document.getElementById("reg-numcontrol").value = r.cdcProveedor || "";
+  document.getElementById("reg-comentario").value = r.respuestaSifen || "";
+
+  document.getElementById("overlay-registrar-respuesta").style.display = "flex";
+}
+
+function cerrarRegistrarRespuesta() {
+  document.getElementById("overlay-registrar-respuesta").style.display = "none";
+}
+
+function guardarRespuestaModal() {
+  var id = document.getElementById("reg-id").value;
+  var numComprobante = document.getElementById("reg-numcomprobante").value.trim();
+  var estado = document.getElementById("reg-estado").value;
+  var numControl = document.getElementById("reg-numcontrol").value.trim();
+  var comentario = document.getElementById("reg-comentario").value.trim();
+
+  if (!numComprobante) {
+    mostrarMensaje("El número de comprobante es obligatorio.", "error");
+    return;
+  }
+
+  var payload = {
+    id: Number(id),
+    numDocRet: numComprobante,
+    estadoSifen: estado,
+    cdcProveedor: numControl,
+    respuestaSifen: comentario
+  };
+
+  // Petición al backend de Spring Boot (Ajustar el endpoint según tu Controller)
+  fetch(URL_API + "/retenciones/registrar-respuesta", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error("Error al guardar la respuesta en el servidor");
+    return r.json();
+  })
+  .then(function(data) {
+    mostrarMensaje("Respuesta registrada exitosamente ✓", "ok");
+    cerrarRegistrarRespuesta();
+    cargarDashboard(); // Recarga la tabla de MaridDB para reflejar los cambios
+  })
+  .catch(function(err) {
+    console.error(err);
+    mostrarMensaje("Error: " + err.message, "error");
+  });
+}
+
+// Reutiliza el modal 'overlay-detalle' que ya posees en el HTML para mostrar info estructurada de la línea
+function verDetallesLinea(id) {
+  var r = retencionesDB.find(function(x) { return String(x.id) === String(id); });
+  if (!r) return;
+
+  document.getElementById("detalle-nro").textContent = r.numDocRet || "—";
+  document.getElementById("detalle-proveedor").textContent = r.razonSocial || "—";
+  
+  // Construimos una visualización detallada en formato texto/HTML
+  var detalleHtml = "<div style='line-height: 1.5; font-size: 12px; color: #333;'>" +
+    "<strong>RUC:</strong> " + (r.rucProveedor || '—') + "<br/>" +
+    "<strong>Timbrado:</strong> " + (r.numTimbrado || '—') + "<br/>" +
+    "<strong>Nº Factura Asociada:</strong> " + (r.nroFactura || '—') + "<br/>" +
+    "<strong>Base Imponible:</strong> Gs. " + formatearNumero(r.baseImponible) + "<br/>" +
+    "<strong>Monto Retención:</strong> Gs. " + formatearNumero(r.montoRetencion) + "<br/>" +
+    "<strong>Estado actual:</strong> " + r.estadoSifen + "<br/>" +
+    "<strong>Número de control/CDC:</strong> " + (r.cdcProveedor || '—') + "<br/>" +
+    "<strong>Comentario/Respuesta:</strong> <pre style='margin:5px 0 0 0; background:#f5f5f5; padding:6px; font-size:11px; overflow-x:auto'>" + (r.respuestaSifen || 'Sin comentarios') + "</pre>" +
+    "</div>";
+
+  document.getElementById("detalle-motivo").innerHTML = detalleHtml;
+  document.getElementById("overlay-detalle").style.display = "flex";
 }
 
 setInterval(function() { if (vistaActual === "facturas") cargarFacturas(); }, 60000);
