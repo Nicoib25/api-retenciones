@@ -423,7 +423,7 @@ function verRespuesta(numDocRet) {
   document.getElementById("detalle-proveedor").textContent = r.razonSocial || r.rucProveedor;
   document.getElementById("detalle-motivo").innerHTML =
     "<pre style='font-size:11px;white-space:pre-wrap;color:#0c447c'>" +
-    "Comentarios fijos. Se puede mostrar aquí los comentarios que se guardaron en el botón de arriba" + "</pre>";
+    "Se puede mostrar aquí los comentarios que se guardaron en el botón de arriba" + "</pre>";
   /*TODO. aqui se puede colocar los comentarios grabados en la respuesta
     "<pre style='font-size:11px;white-space:pre-wrap;color:#0c447c'>" +
     String(r.respuestaSifen).replace(/</g, "&lt;") + "</pre>";
@@ -994,7 +994,7 @@ function verDetallesLinea(id) {
     "<strong>Base Imponible:</strong> Gs. " + formatearNumero(r.baseImponible) + "<br/>" +
     "<strong>Monto Retención:</strong> Gs. " + formatearNumero(r.montoRetencion) + "<br/>" +
     "<strong>Estado actual:</strong> " + r.estadoSifen + "<br/>" +
-    "<strong>Número de control/CDC:</strong> " + (r.cdcProveedor || '—') + "<br/>" +
+    "<strong>Número de control (Respuesta):</strong> " + (r.cdcProveedor || '—') + "<br/>" +
     "<strong>Comentario/Respuesta:</strong> <pre style='margin:5px 0 0 0; background:#f5f5f5; padding:6px; font-size:11px; overflow-x:auto'>" + (r.respuestaSifen || 'Sin comentarios') + "</pre>" +
     "</div>";
 
