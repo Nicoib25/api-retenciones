@@ -284,7 +284,7 @@ function renderDashboard() {
     // -- Bloque de Acciones Modificado --
     var accion = "<div style='display:flex;gap:4px;flex-wrap:wrap'>";
     
-    // Botones por defecto solicitados para cada línea
+    // Botones para cada línea
     accion += "<button class='btn-reenviar' onclick='abrirRegistrarRespuesta(\"" + r.id + "\")' style='color:#2d7a0e;border-color:#b5e8b5;background:#f4fbf4'>Registrar Respuesta</button>";
     accion += "<button class='btn-reenviar' onclick='verDetallesLinea(\"" + r.id + "\")' style='color:#666;border-color:#ccc'>Ver Detalles</button>";
     
@@ -864,15 +864,15 @@ function abrirRegistrarRespuesta(id) {
 
   // Cargar datos preexistentes o por defecto en el modal
   document.getElementById("reg-id").value = r.id;
-  document.getElementById("reg-numcomprobante").value = r.numDocRet || r.nroFactura || "";
-  document.getElementById("reg-estado").value = (r.estadoSifen === "APROBADO") ? "APROBADO" : "ENVIADO";
+  document.getElementById("reg-numcomprobante").value = r.numDocRet || "";
+  document.getElementById("reg-estado").value = (r.estadoSifen === "APROBADO") ? "APROBADO" : "RECHAZADO";
   document.getElementById("reg-estado").value = "APROBADO"; //valor por defecto en el modal
-  document.getElementById("reg-numcontrol").value = r.cdcProveedor || "";
-  document.getElementById("reg-comentario").value = r.respuestaSifen || "";
+  document.getElementById("reg-numcontrol").value = "";
+  document.getElementById("reg-comentario").value = "";
 
   document.getElementById("overlay-registrar-respuesta").style.display = "flex";
 }
-
+COMR
 function cerrarRegistrarRespuesta() {
   document.getElementById("overlay-registrar-respuesta").style.display = "none";
 }
