@@ -820,9 +820,9 @@ function actualizarEstadoEnviado(ids) {
     cargarDashboard();                    // recarga los datos
     setTimeout(() => {
       // Cambiar a la pestaña "Envios TESAKA"
-      var pestanaTesaka = document.querySelector('#vista-dashboard .pestana[onclick*="TESAKA_GENERADO"]');
+      var pestanaTesaka = document.querySelector('#vista-dashboard .pestana[onclick*="ENVIADO"]');
       if (pestanaTesaka) {
-        cambiarPestanaDash('TESAKA_GENERADO', pestanaTesaka);
+        cambiarPestanaDash('ENVIADO', pestanaTesaka);
       } else {
         // fallback: recargar dashboard y forzar render
         renderDashboard();
