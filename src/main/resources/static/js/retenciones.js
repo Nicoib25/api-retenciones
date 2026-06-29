@@ -91,6 +91,7 @@ function cambiarVista(vista, elemento) {
   elemento.classList.add("activa");
   document.getElementById("vista-facturas").style.display  = (vista === "facturas")  ? "block" : "none";
   document.getElementById("vista-dashboard").style.display = (vista === "dashboard") ? "block" : "none";
+  //AQUI
   if (vista === "dashboard") cargarDashboard();
 }
 
@@ -162,9 +163,11 @@ function cargarDashboard() {
       document.getElementById("dash-enviadas").textContent   = data.resumen.enviadas   || 0;
       document.getElementById("dash-pendientes").textContent = data.resumen.pendientes || 0;
       document.getElementById("dash-errores").textContent    = data.resumen.errores    || 0;
-      document.getElementById("dash-fisicas").textContent    = data.resumen.fisicas    || 0;
-      document.getElementById("dash-monto").textContent      = "Gs. " + formatearNumero(data.resumen.montoTotal || 0);
+      //TODO. quitar
+      //- document.getElementById("dash-fisicas").textContent    = data.resumen.fisicas    || 0;
+      //- document.getElementById("dash-monto").textContent      = "Gs. " + formatearNumero(data.resumen.montoTotal || 0);
       retencionesDB = data.retenciones || [];
+      //AQUI
       renderDashboard();
       renderLog(data.logs || []);
     })
@@ -788,23 +791,23 @@ function descargarTxt() {
   window.URL.revokeObjectURL(url);
   mostrarMensaje("Archivo TXT descargado ✓", "ok");
 
-  //luego de descargar el txt, actualizar estado de las facturas a TESAKA_ENVIO_PENDIENTE
-  actualizarEstadoTesakaPendienteEnvio(seleccionadosDash);
+  //luego de descargar el txt, actualizar estado de las retenciones a ENVIADO
+  actualizarEstadoEnviado(seleccionadosDash);
 
   // Deseleccionar todas las filas, desactivar el botón y limpiar contadores
   limpiarSeleccionDash();
 }
 
-// Actualiza el estado a TESAKA_ENVIO_PENDIENTE después de descargar el TXT
-function actualizarEstadoTesakaPendienteEnvio(ids) {
+// Actualiza el estado a ENVIADO después de descargar el TXT
+function actualizarEstadoEnviado(ids) {
   if (!ids || ids.length === 0) return;
 
-  fetch(URL_API + "/retenciones/actualizar-estado-tesaka", {
+  fetch(URL_API + "/retenciones/actualizar-estado", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ 
       ids: ids.map(Number),
-      estado: "TESAKA_ENVIADO"
+      estado: "ENVIADO"
     })
   })
   .then(function(r) {
@@ -812,10 +815,19 @@ function actualizarEstadoTesakaPendienteEnvio(ids) {
     return r.json();
   })
   .then(function() {
-    mostrarMensaje("Estado actualizado a TESAKA_PENDIENTE", "ok");
-    // Recargar dashboard para ver los cambios
-    cargarDashboard();
-    // Limpiar selección
+    mostrarMensaje("Estado actualizado a ENVIADO", "ok");
+    // === REFRESCO AUTOMÁTICO Y CAMBIO DE PESTAÑA ===
+    cargarDashboard();                    // recarga los datos
+    setTimeout(() => {
+      // Cambiar a la pestaña "Envios TESAKA"
+      var pestanaTesaka = document.querySelector('#vista-dashboard .pestana[onclick*="TESAKA_GENERADO"]');
+      if (pestanaTesaka) {
+        cambiarPestanaDash('TESAKA_GENERADO', pestanaTesaka);
+      } else {
+        // fallback: recargar dashboard y forzar render
+        renderDashboard();
+      }
+    }, 800);
     seleccionadosDash = [];
     actualizarInfoSelDash();
   })

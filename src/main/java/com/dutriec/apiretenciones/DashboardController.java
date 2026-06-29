@@ -131,7 +131,7 @@ public class DashboardController {
     }
 
     // Actualiza el estado de facturas enviadas o a enviar a Tesaká
-    @PostMapping("/actualizar-estado-tesaka")
+    @PostMapping("/actualizar-estado")
     public ResponseEntity<?> actualizarEstadoTesaka(@RequestBody Map<String, Object> request) {
         @SuppressWarnings("unchecked")
         List<Integer> ids = (List<Integer>) request.get("ids");

@@ -75,7 +75,7 @@ public class RetencionRepository {
 
         String sql = """
             UPDATE retenciones_enviadas 
-            SET estado_envio_tesaka = ?, 
+            SET estado = ?, 
                 fecha_actualizacion = NOW() 
             WHERE id IN (%s)
             """.formatted(placeholders);
