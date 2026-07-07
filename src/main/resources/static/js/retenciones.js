@@ -274,6 +274,7 @@ function generarTesaka() {
   .finally(function() { btn.disabled = false; btn.textContent = "✓ Generar TESAKA"; });
 }
 
+// === MODIFICADO: renderDashboard() ===
 function renderDashboard() {
   var buscar = document.getElementById("dash-filtro-ruc").value.toLowerCase();
   var tbody  = document.getElementById("cuerpo-dashboard");
@@ -289,6 +290,14 @@ function renderDashboard() {
     tbody.innerHTML = "<tr><td colspan='10' style='text-align:center;padding:2rem;color:#aaa'>Sin resultados</td></tr>";
     return;
   }
+
+  var mostrarCheckbox = mostrarCheckboxesEnDash();
+  // Actualizar header dinámicamente
+  var headerCheckbox = document.querySelector("#vista-dashboard thead th:first-child");
+  if (headerCheckbox) {
+    headerCheckbox.style.display = mostrarCheckbox ? "" : "none";
+  }
+
   var html = "";
   filtrados.forEach(function(r) {
     var esFE = r.cdcProveedor && r.cdcProveedor.trim() !== "";
@@ -310,8 +319,15 @@ function renderDashboard() {
       accion = "<button class='btn-reenviar' onclick='verRespuesta(\"" + r.numDocRet + "\")' style='color:#0c447c;border-color:#b5d4f4'>Ver XML</button>";
     }
     var checked = seleccionadosDash.indexOf(String(r.id)) !== -1 ? "checked" : "";
-    html += "<tr>" +
-      "<td><input type='checkbox' class='dash-check-item' data-id='" + r.id + "' " + checked + " onchange='toggleSeleccionDash(this.dataset.id, this)'></td>" +
+
+    html += "<tr>";
+    
+    if (mostrarCheckbox) {
+      html += "<td><input type='checkbox' class='dash-check-item' data-id='" + r.id + "' " + 
+              checked + " onchange='toggleSeleccionDash(this.dataset.id, this)'></td>";
+    }
+    
+    html +=
       "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + "</td>" +
       "<td style='font-size:11px'>" + (r.rucProveedor || "—") + "</td>" +
       "<td><strong style='font-size:12px'>" + (r.razonSocial || "—") + "</strong></td>" +
@@ -1052,6 +1068,11 @@ function verDetallesLinea(id) {
 
   document.getElementById("detalle-motivo").innerHTML = detalleHtml;
   document.getElementById("overlay-detalle").style.display = "flex";
+}
+
+// === NUEVA FUNCIÓN HELPER (agregada) ===
+function mostrarCheckboxesEnDash() {
+  return pestanaDashActual === "todas" || pestanaDashActual === "PENDIENTE";
 }
 
 setInterval(function() { if (vistaActual === "facturas") cargarFacturas(); }, 60000);
