@@ -372,9 +372,6 @@ function renderDashboard() {
       "<td>" + tipoHtml + "</td>" +
       "<td>" + badgeDashboard(r.estadoSifen) + "</td>" +
       "<td style='font-size:11px'>" + formatearFecha(r.fechaEnvio) + "</td>" +
-      "<td style='font-size:11px;color:#a32d2d'>" + (r.correoProveedor || "—") + "</td>" +
-      "<td style='font-size:11px;color:#a32d2d'>" + (r.telefonoProveedor || "—") + "</td>" +
-      "<td style='font-size:11px;color:#a32d2d'>" + (r.direccionProveedor || "—") + "</td>" +
       "<td>" + accion + "</td>" +
       "</tr>";
   });
@@ -1111,6 +1108,25 @@ function descargarTxt() {
       // Condición y cuotas de la COMPRA original (no de la retención).
       // CREDITO exige cuotas > 0; si no se conoce la condición real, usar CONTADO.
       var condicion = r.condicionCompra === "CREDITO" ? "CREDITO" : "CONTADO";
+
+      // ⚠ REGLA FISCAL IMPORTANTE (evita multa de Gs. 50.000):
+      // Si la condición es CONTADO y la factura tiene MÁS DE 7 DÍAS,
+      // la DNIT multa por comunicación tardía de retención. En CRÉDITO
+      // la fecha no importa. Por eso, si detectamos que la fecha del
+      // comprobante es vieja, forzamos CREDITO automáticamente.
+      var fechaComprobante = r.fechaFactura
+        ? new Date(String(r.fechaFactura).substring(0, 10))
+        : (r.fechaEnvio ? new Date(String(r.fechaEnvio).substring(0, 10)) : null);
+      if (condicion === "CONTADO" && fechaComprobante && !isNaN(fechaComprobante)) {
+        var hoy = new Date();
+        var diasTranscurridos = Math.floor((hoy - fechaComprobante) / (1000 * 60 * 60 * 24));
+        if (diasTranscurridos > 7) {
+          condicion = "CREDITO";
+          console.info("Factura " + nroComprobante + " tiene " + diasTranscurridos +
+            " días — forzada a CRÉDITO para evitar multa por comunicación tardía");
+        }
+      }
+
       var cuotas = condicion === "CREDITO" ? (Number(r.cuotas) || 1) : 0;
 
       // FIX Bug precioUnitario: la especificación exige que para importes
