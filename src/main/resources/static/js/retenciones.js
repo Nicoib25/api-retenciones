@@ -11,7 +11,7 @@ var pestanaActual = "todas";
 var facturas = [];
 var retencionesDB = [];
 var vistaActual = "facturas";
-var pestanaDashActual = "todas";
+var pestanaDashActual = "PENDIENTE";
 var seleccionadosDash = [];
 
 // =============================================
@@ -201,9 +201,11 @@ function cargarDashboard() {
     .then(function(r) { if (!r.ok) throw new Error("Error al cargar dashboard"); return r.json(); })
     .then(function(data) {
       primeraVezDash = false;
-      document.getElementById("dash-enviadas").textContent   = data.resumen.enviadas   || 0;
+      // KPIs del flujo: Pendientes, Enviados, Aprobados, Rechazados
       document.getElementById("dash-pendientes").textContent = data.resumen.pendientes || 0;
-      document.getElementById("dash-errores").textContent    = data.resumen.errores    || 0;
+      document.getElementById("dash-enviadas").textContent   = data.resumen.enviadas   || 0;
+      document.getElementById("dash-aprobados").textContent  = data.resumen.aprobados  || 0;
+      document.getElementById("dash-rechazados").textContent = data.resumen.rechazados || 0;
       retencionesDB = data.retenciones || [];
       renderDashboard();
       renderLog(data.logs || []);
@@ -308,7 +310,8 @@ function renderDashboard() {
   var buscar = document.getElementById("dash-filtro-ruc").value.toLowerCase();
   var tbody  = document.getElementById("cuerpo-dashboard");
   var filtrados = retencionesDB.filter(function(r) {
-    var matchEstado = pestanaDashActual === "todas" || r.estadoSifen === pestanaDashActual;
+    // Filtrar por pestaña actual
+    var matchEstado = r.estadoSifen === pestanaDashActual;
     var matchBuscar = !buscar ||
       (r.ordenPago    && String(r.ordenPago).toLowerCase().indexOf(buscar) !== -1) ||
       (r.rucProveedor && r.rucProveedor.toLowerCase().indexOf(buscar) !== -1) ||
@@ -317,16 +320,18 @@ function renderDashboard() {
     return matchEstado && matchBuscar;
   });
   if (!filtrados.length) {
-    tbody.innerHTML = "<tr><td colspan='10' style='text-align:center;padding:2rem;color:#aaa'>Sin resultados</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='12' style='text-align:center;padding:2rem;color:#aaa'>Sin resultados</td></tr>";
     return;
   }
 
-  var mostrarCheckbox = mostrarCheckboxesEnDash();
-  // Actualizar header dinámicamente
+  // Checkbox solo en PENDIENTE y RECHAZADO (para descargar TXT)
+  var mostrarCheckbox = (pestanaDashActual === "PENDIENTE" || pestanaDashActual === "RECHAZADO");
   var headerCheckbox = document.querySelector("#vista-dashboard thead th:first-child");
-  if (headerCheckbox) {
-    headerCheckbox.style.display = mostrarCheckbox ? "" : "none";
-  }
+  if (headerCheckbox) headerCheckbox.style.display = mostrarCheckbox ? "" : "none";
+
+  // Botón descargar TXT solo visible en PENDIENTE y RECHAZADO
+  var btnDescargar = document.getElementById("btn-descargar-txt");
+  if (btnDescargar) btnDescargar.style.display = mostrarCheckbox ? "" : "none";
 
   var html = "";
   filtrados.forEach(function(r) {
@@ -335,25 +340,39 @@ function renderDashboard() {
       ? "<span class='badge badge-procesado'>Electronica</span>"
       : "<span class='badge badge-sinauth'>Fisica</span>";
 
-    // -- Bloque de Acciones Modificado --
-    var accion = "<div style='display:flex;gap:4px;flex-wrap:wrap'>";
-    
-    // Botones para cada línea
-    accion += "<button class='btn-reenviar' onclick='abrirRegistrarRespuesta(\"" + r.id + "\")' style='color:#2d7a0e;border-color:#b5e8b5;background:#f4fbf4'>Registrar Respuesta</button>";
-    accion += "<button class='btn-reenviar' onclick='verDetallesLinea(\"" + r.id + "\")' style='color:#666;border-color:#ccc'>Ver Detalles</button>";
-    
-    if (r.estadoSifen === "ERROR") {
-      accion = "<button class='btn-rechazo' onclick='verRechazo(\"" + r.numDocRet + "\")'>Ver rechazo</button>";
-               //+ "<button class='btn-reenviar' onclick='reenviarRetencion(\"" + r.id + "\")' style='margin-left:4px'>Reenviar</button>";
-    } else if (r.estadoSifen === "ENVIADO" && r.respuestaSifen) {
-      accion = "<button class='btn-reenviar' onclick='verRespuesta(\"" + r.numDocRet + "\")' style='color:#0c447c;border-color:#b5d4f4'>Ver XML</button>";
+    // Indicador visual de rechazo previo
+    var fueRechazado = r.aprobacion_estado === "RECHAZADO" || (r.aprobacion_comentario && r.estadoSifen === "ENVIADO");
+    var indicadorRechazo = fueRechazado
+      ? "<div style='font-size:10px;color:#a32d2d;font-weight:600;margin-top:2px'>⚠ Reenvío</div>" : "";
+
+    // === ACCIONES SEGÚN PESTAÑA ===
+    var accion = "";
+    if (pestanaDashActual === "PENDIENTE") {
+      // Pendiente: sin acciones, solo checkbox para descargar
+      accion = "<span style='font-size:11px;color:#888'>Descargar TXT ↑</span>";
+    } else if (pestanaDashActual === "ENVIADO") {
+      // Enviados a Tesaka: Aprobar o Rechazar
+      accion = "<div style='display:flex;flex-direction:column;gap:4px'>" +
+        "<button class='btn-reenviar' onclick='abrirAprobarTesaka(" + r.id + ",\"" + (r.numDocRet || "") + "\",\"" + (r.razonSocial || "").replace(/"/g, "&quot;") + "\")' " +
+        "style='color:#2d7a0e;border-color:#90c060;background:#f4fbf4'>✓ Aprobar</button>" +
+        "<button class='btn-rechazo' onclick='abrirRechazarTesaka(" + r.id + ",\"" + (r.numDocRet || "") + "\",\"" + (r.razonSocial || "").replace(/"/g, "&quot;") + "\")'>" +
+        "✕ Rechazar</button></div>";
+    } else if (pestanaDashActual === "APROBADO") {
+      // Aprobadas: solo ver detalles
+      accion = "<button class='btn-reenviar' onclick='verDetallesLinea(\"" + r.id + "\")' style='color:#666;border-color:#ccc'>Ver Detalles</button>";
+    } else if (pestanaDashActual === "RECHAZADO") {
+      // Rechazado: checkbox para re-descargar + ver motivo
+      accion = "<button class='btn-rechazo' onclick='verDetallesLinea(\"" + r.id + "\")'>Ver motivo</button>";
     }
+
     var checked = seleccionadosDash.indexOf(String(r.id)) !== -1 ? "checked" : "";
 
-    html += "<tr>";
-    
+    // Fila con fondo especial si fue rechazada previamente
+    var estiloFila = fueRechazado ? "background:#fff8f0;border-left:3px solid #f59e0b;" : "";
+    html += "<tr style='" + estiloFila + "'>";
+
     if (mostrarCheckbox) {
-      html += "<td><input type='checkbox' class='dash-check-item' data-id='" + r.id + "' " + 
+      html += "<td><input type='checkbox' class='dash-check-item' data-id='" + r.id + "' " +
               checked + " onchange='toggleSeleccionDash(this.dataset.id, this)'></td>";
     }
 
@@ -361,19 +380,16 @@ function renderDashboard() {
     var simbolo = esUSD ? "USD " : "Gs. ";
     var formatMonto = esUSD ? formatearUSD : formatearNumero;
 
-    // Derivar el IVA a partir del monto de retención: retencion = impuesto × 30%
-    // Ratio > 2% indica tasa 10%, ratio menor indica 5%. Sin retención → exento.
     var base = Number(r.baseImponible) || 0;
     var ret  = Number(r.montoRetencion) || 0;
     var iva  = 0;
     if (ret > 0 && base > 0) {
-      var pctIva = ret / base > 0.02 ? 30 : 30; // 30% para ambos casos
-      iva = ret / (pctIva / 100);
+      iva = ret / (30 / 100);
     }
     var total = base + iva;
 
     html +=
-      "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + "</td>" +
+      "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + indicadorRechazo + "</td>" +
       "<td style='font-family:monospace;font-size:11px'>" + (r.ordenPago || "—") + "</td>" +
       "<td style='font-size:11px'>" + (r.rucProveedor || "—") + "</td>" +
       "<td><strong style='font-size:12px'>" + (r.razonSocial && r.razonSocial.trim() !== "" && ["—","-","---","null","Sin nombre"].indexOf(r.razonSocial.trim()) === -1 ? r.razonSocial : "RUC " + (r.rucProveedor || "s/d")) + "</strong></td>" +
@@ -391,9 +407,117 @@ function renderDashboard() {
 }
 
 function badgeDashboard(estado) {
-  var map    = { "ENVIADO":"badge-procesado", "PENDIENTE":"badge-pendiente", "ERROR":"badge-rechazado", "FISICA_MANUAL":"badge-sinauth", "SIMULADO":"badge-anulado", "APROBADO":"badge-procesado" };
-  var labels = { "ENVIADO":"Enviado", "PENDIENTE":"Pendiente de envio", "ERROR":"Error", "FISICA_MANUAL":"Fisica manual", "SIMULADO":"Simulado", "APROBADO":"Aprobado" };
+  var map    = { "ENVIADO":"badge-procesado", "PENDIENTE":"badge-pendiente", "ERROR":"badge-rechazado", "RECHAZADO":"badge-rechazado", "APROBADO":"badge-procesado" };
+  var labels = { "ENVIADO":"Enviado", "PENDIENTE":"Pendiente", "ERROR":"Error", "RECHAZADO":"Rechazado", "APROBADO":"Aprobado" };
   return "<span class='badge " + (map[estado] || "") + "'>" + (labels[estado] || estado) + "</span>";
+}
+
+// =============================================
+// APROBAR / RECHAZAR EN TESAKA
+// =============================================
+
+function abrirAprobarTesaka(id, numDoc, proveedor) {
+  document.getElementById("aprobar-tesaka-id").value = id;
+  document.getElementById("aprobar-tesaka-info").textContent = numDoc + " — " + proveedor;
+  document.getElementById("aprobar-tesaka-numero").value = "";
+  document.getElementById("aprobar-tesaka-error").style.display = "none";
+  document.getElementById("overlay-aprobar-tesaka").style.display = "flex";
+  document.getElementById("aprobar-tesaka-numero").focus();
+}
+
+function cerrarAprobarTesaka() {
+  document.getElementById("overlay-aprobar-tesaka").style.display = "none";
+}
+
+function confirmarAprobarTesaka() {
+  var id = document.getElementById("aprobar-tesaka-id").value;
+  var numero = document.getElementById("aprobar-tesaka-numero").value.trim();
+  if (!numero) {
+    var err = document.getElementById("aprobar-tesaka-error");
+    err.textContent = "El número de aprobación es obligatorio.";
+    err.style.display = "block";
+    document.getElementById("aprobar-tesaka-numero").focus();
+    return;
+  }
+  // Buscar el comprobante
+  var reg = retencionesDB.find(function(r) { return Number(r.id) === Number(id); });
+  var nroComp = reg ? reg.numDocRet : "";
+
+  fetch(URL_API + "/retenciones/guardar-respuesta", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nro_comprobante: nroComp,
+      estado: "APROBADO",
+      aprobacion_nro_control: numero,
+      aprobacion_comentario: ""
+    })
+  })
+  .then(function(r) { if (!r.ok) throw new Error("Error al aprobar"); return r.json(); })
+  .then(function() {
+    cerrarAprobarTesaka();
+    // Actualizar el estado local a APROBADO
+    fetch(URL_API + "/retenciones/actualizar-estado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [Number(id)], estado: "APROBADO" })
+    }).then(function() {
+      mostrarMensaje("Retención aprobada: " + nroComp, "ok");
+      cargarDashboard();
+    });
+  })
+  .catch(function(e) { mostrarMensaje("Error al aprobar: " + e.message, "error"); });
+}
+
+function abrirRechazarTesaka(id, numDoc, proveedor) {
+  document.getElementById("rechazar-tesaka-id").value = id;
+  document.getElementById("rechazar-tesaka-info").textContent = numDoc + " — " + proveedor;
+  document.getElementById("rechazar-tesaka-motivo").value = "";
+  document.getElementById("rechazar-tesaka-error").style.display = "none";
+  document.getElementById("overlay-rechazar-tesaka").style.display = "flex";
+  document.getElementById("rechazar-tesaka-motivo").focus();
+}
+
+function cerrarRechazarTesaka() {
+  document.getElementById("overlay-rechazar-tesaka").style.display = "none";
+}
+
+function confirmarRechazarTesaka() {
+  var id = document.getElementById("rechazar-tesaka-id").value;
+  var motivo = document.getElementById("rechazar-tesaka-motivo").value.trim();
+  if (!motivo) {
+    var err = document.getElementById("rechazar-tesaka-error");
+    err.textContent = "El motivo del rechazo es obligatorio.";
+    err.style.display = "block";
+    document.getElementById("rechazar-tesaka-motivo").focus();
+    return;
+  }
+  var reg = retencionesDB.find(function(r) { return Number(r.id) === Number(id); });
+  var nroComp = reg ? reg.numDocRet : "";
+
+  fetch(URL_API + "/retenciones/guardar-respuesta", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nro_comprobante: nroComp,
+      estado: "RECHAZADO",
+      aprobacion_nro_control: "",
+      aprobacion_comentario: motivo
+    })
+  })
+  .then(function(r) { if (!r.ok) throw new Error("Error al rechazar"); return r.json(); })
+  .then(function() {
+    cerrarRechazarTesaka();
+    fetch(URL_API + "/retenciones/actualizar-estado", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [Number(id)], estado: "RECHAZADO" })
+    }).then(function() {
+      mostrarMensaje("Retención rechazada: " + nroComp, "warning");
+      cargarDashboard();
+    });
+  })
+  .catch(function(e) { mostrarMensaje("Error al rechazar: " + e.message, "error"); });
 }
 
 function renderLog(logs) {
@@ -838,10 +962,123 @@ function actualizarInfoSeleccion() {
 }
 function cambiarPestana(nombre, elemento) {
   pestanaActual = nombre; seleccionados = [];
-  var pestanas = document.querySelectorAll(".pestana");
+  var pestanas = document.querySelectorAll("#vista-facturas .pestana");
   for (var i = 0; i < pestanas.length; i++) pestanas[i].classList.remove("activa");
   elemento.classList.add("activa");
-  renderTabla();
+
+  if (nombre === "PROCESADO") {
+    // "Facturas aprobadas" = historial real desde MariaDB
+    renderHistorialAprobadas();
+  } else {
+    // Ocultar el contenedor de historial y mostrar la tabla normal
+    var hist = document.getElementById("historial-aprobadas");
+    if (hist) hist.style.display = "none";
+    document.getElementById("cuerpo-tabla").parentElement.style.display = "";
+    document.querySelector("#vista-facturas .barra-acciones").style.display = "";
+    renderTabla();
+  }
+}
+
+/**
+ * Muestra el historial de facturas aprobadas desde MariaDB.
+ * Reemplaza la tabla de facturas con una vista de solo lectura.
+ */
+function renderHistorialAprobadas() {
+  // Ocultar barra de acciones (checkboxes, botón aprobar, filtros de factura)
+  document.querySelector("#vista-facturas .barra-acciones").style.display = "none";
+
+  // Usar el mismo tbody de la tabla existente
+  var tbody = document.getElementById("cuerpo-tabla");
+  tbody.innerHTML = "<tr><td colspan='10' style='text-align:center;padding:2rem;color:#aaa'>" +
+    "<div class='spinner-carga'></div><div style='margin-top:8px'>Cargando historial...</div></td></tr>";
+
+  // Insertar filtros del historial ANTES de la tabla (si no existen)
+  var filtrosHist = document.getElementById("filtros-historial");
+  if (!filtrosHist) {
+    filtrosHist = document.createElement("div");
+    filtrosHist.id = "filtros-historial";
+    filtrosHist.style.cssText = "display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap";
+    var tablaContenedor = tbody.closest(".tabla-contenedor");
+    tablaContenedor.parentElement.insertBefore(filtrosHist, tablaContenedor);
+  }
+  filtrosHist.style.display = "flex";
+  filtrosHist.innerHTML =
+    "<input type='text' id='filtro-historial' placeholder='Buscar proveedor, RUC o Nº orden...' " +
+    "oninput='filtrarHistorial()' style='padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px;width:280px'>" +
+    "<select id='filtro-historial-mes' onchange='filtrarHistorial()' style='padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:13px'>" +
+    "<option value=''>Todos los meses</option>" +
+    "<option value='01'>Enero</option><option value='02'>Febrero</option>" +
+    "<option value='03'>Marzo</option><option value='04'>Abril</option>" +
+    "<option value='05'>Mayo</option><option value='06'>Junio</option>" +
+    "<option value='07'>Julio</option><option value='08'>Agosto</option>" +
+    "<option value='09'>Septiembre</option><option value='10'>Octubre</option>" +
+    "<option value='11'>Noviembre</option><option value='12'>Diciembre</option>" +
+    "</select>" +
+    "<span id='historial-count' style='font-size:12px;color:#888'></span>";
+
+  // Cambiar los encabezados de la tabla
+  var thead = tbody.closest("table").querySelector("thead tr");
+  thead.innerHTML =
+    "<th>Comprobante</th><th>Orden Pago</th><th>Proveedor</th><th>Timbrado</th>" +
+    "<th class='der'>Monto Total</th><th class='der'>IVA</th><th class='der'>Retención</th>" +
+    "<th>Estado</th><th>Fecha</th>";
+
+  fetch(URL_API + "/retenciones/dashboard")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var retenciones = data.retenciones || [];
+      if (!retenciones.length) {
+        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;padding:2rem;color:#aaa'>No hay facturas procesadas aún</td></tr>";
+        return;
+      }
+
+      var html = "";
+      retenciones.forEach(function(r) {
+        var esUSD = (r.moneda === "DL" || r.moneda === "USD");
+        var sim = esUSD ? "USD " : "Gs. ";
+        var fmt = esUSD ? formatearUSD : formatearNumero;
+        var base = Number(r.baseImponible) || 0;
+        var ret = Number(r.montoRetencion) || 0;
+        var iva = ret > 0 ? ret / 0.30 : 0;
+        var total = base + iva;
+        var fechaStr = r.fechaEnvio ? String(r.fechaEnvio) : "";
+        var mes = fechaStr.length >= 7 ? fechaStr.substring(5, 7) : "";
+
+        html += "<tr class='fila-historial' data-buscar='" +
+          ((r.razonSocial || "") + (r.rucProveedor || "") + (r.ordenPago || "") + (r.numDocRet || "")).toLowerCase() +
+          "' data-mes='" + mes + "'>" +
+          "<td style='font-family:monospace;font-size:11px'>" + (r.numDocRet || "—") + "</td>" +
+          "<td style='font-family:monospace;font-size:11px'>" + (r.ordenPago || "—") + "</td>" +
+          "<td><strong style='font-size:12px'>" + (r.razonSocial || "—") + "</strong><div style='font-size:10px;color:#888'>" + (r.rucProveedor || "") + "</div></td>" +
+          "<td style='font-family:monospace;font-size:11px'>" + (r.timbradoProveedor || r.numTimbrado || "—") + "</td>" +
+          "<td class='der'>" + sim + fmt(total) + "</td>" +
+          "<td class='der'>" + sim + fmt(iva) + "</td>" +
+          "<td class='der'><strong>" + sim + fmt(ret) + "</strong></td>" +
+          "<td>" + badgeDashboard(r.estadoSifen) + "</td>" +
+          "<td style='font-size:11px'>" + formatearFecha(r.fechaEnvio) + "</td></tr>";
+      });
+      tbody.innerHTML = html;
+      filtrarHistorial();
+    })
+    .catch(function(e) {
+      tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;padding:2rem;color:#a32d2d'>Error: " + e.message + "</td></tr>";
+    });
+}
+
+function filtrarHistorial() {
+  var buscar = (document.getElementById("filtro-historial").value || "").toLowerCase();
+  var mes = document.getElementById("filtro-historial-mes").value;
+  var filas = document.querySelectorAll(".fila-historial");
+  var visibles = 0;
+  for (var i = 0; i < filas.length; i++) {
+    var data = filas[i].getAttribute("data-buscar") || "";
+    var mesFila = filas[i].getAttribute("data-mes") || "";
+    var mostrar = (!buscar || data.indexOf(buscar) !== -1) && (!mes || mesFila === mes);
+    filas[i].style.display = mostrar ? "" : "none";
+    if (mostrar) visibles++;
+  }
+  var countEl = document.getElementById("historial-count");
+  if (countEl) countEl.textContent = visibles + " registro" + (visibles !== 1 ? "s" : "");
 }
 // =============================================
 // SISTEMA DE NOTIFICACIONES (TOASTS)
@@ -1584,7 +1821,7 @@ function verDetallesLinea(id) {
 
 // === NUEVA FUNCIÓN HELPER (agregada) ===
 function mostrarCheckboxesEnDash() {
-  return pestanaDashActual === "todas" || pestanaDashActual === "PENDIENTE";
+  return pestanaDashActual === "PENDIENTE" || pestanaDashActual === "RECHAZADO";
 }
 
 // Auto-refresh silencioso: facturas cada 60s, dashboard cada 120s.
