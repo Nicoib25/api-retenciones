@@ -234,7 +234,7 @@ function cambiarPestanaDash(nombre, elemento) {
   }
   // Marcar la activa
   elemento.classList.add("activa");
-  elemento.style.cssText = "border-bottom:3px solid #2d7a0e !important;color:#2d7a0e !important;font-weight:bold !important;background:transparent !important;";
+  elemento.style.cssText = "border-bottom:3px solid #0e347a !important;color:#0e347a !important;font-weight:bold !important;background:transparent !important;";
 
   // Ocultar/mostrar checkbox y botones según la pestaña
   var mostrarCheckbox = (nombre === "PENDIENTE" || nombre === "RECHAZADO");
