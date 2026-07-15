@@ -316,11 +316,10 @@ public class DashboardController {
         Map<String, Object> respuesta = new HashMap<>();
 
         Map<String, Object> resumen = new HashMap<>();
-        resumen.put("enviadas",   contarPorEstado("ENVIADO"));
         resumen.put("pendientes", contarPorEstado("PENDIENTE"));
-        resumen.put("errores",    contarPorEstado("ERROR"));
-        resumen.put("fisicas",    contarPorEstado("FISICA_MANUAL"));
-        resumen.put("montoTotal", obtenerMontoTotal());
+        resumen.put("enviadas",   contarPorEstado("ENVIADO"));
+        resumen.put("aprobados",  contarPorEstado("APROBADO"));
+        resumen.put("rechazados", contarPorEstado("RECHAZADO"));
         respuesta.put("resumen", resumen);
         respuesta.put("retenciones", obtenerRetenciones());
         respuesta.put("logs", obtenerLogs());
