@@ -13,27 +13,26 @@
   <!-- ====================================================
        PANTALLA LOGIN
   ==================================================== -->
- <!-- ==================================================== -->
-<div id="pantalla-login" class="login-background">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="login-icon"></div>
-      <div class="login-empresa">DUTRIEC S.A</div>
-      <div class="login-sistema">Sistema de Retenciones SIFEN</div>
-      <div class="login-ruc">RUC 80015056-2</div>
+  <div id="pantalla-login">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-icon"></div>
+        <div class="login-empresa">DUTRIEC SA</div>
+        <div class="login-sistema">Sistema de Retenciones SIFEN</div>
+        <div class="login-ruc">RUC 80015056-2</div>
+      </div>
+      <div class="login-campo">
+        <label>Usuario</label>
+        <input type="text" id="login-usuario" placeholder="usuario" autocomplete="username" />
+      </div>
+      <div class="login-campo">
+        <label>Contraseña</label>
+        <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <button class="btn-ingresar" onclick="doLogin()">Ingresar</button>
+      <div id="login-error" class="login-error"></div>
     </div>
-    <div class="login-campo">
-      <label>Usuario</label>
-      <input type="text" id="login-usuario" placeholder="usuario" autocomplete="username" />
-    </div>
-    <div class="login-campo">
-      <label>Contraseña</label>
-      <input type="password" id="login-clave" placeholder="••••••••" autocomplete="current-password" />
-    </div>
-    <button class="btn-ingresar" onclick="doLogin()">Ingresar</button>
-    <div id="login-error" class="login-error"></div>
   </div>
-</div>
 
   <!-- ====================================================
        PANTALLA PRINCIPAL (oculta hasta login)
@@ -41,7 +40,7 @@
   <div id="pantalla-principal" style="display:none">
 
     <!-- ENCABEZADO -->
-   <header class="header">
+    <header class="header">
   <div class="header-izq" style="display: flex; align-items: center; gap: 15px;">
     
     <!-- NUEVO: Círculo contenedor para el logo -->
@@ -59,6 +58,7 @@
     <button class="btn-logout" onclick="doLogout()">Salir</button>
   </div>
 </header>
+
     <div class="contenedor">
 
       <!-- PESTAÑAS PRINCIPALES -->
@@ -161,7 +161,7 @@
       ================================================ -->
       <div id="vista-dashboard" style="display:none">
 
-        <!-- TARJETAS DASHBOARD - KPIs por estado del flujo -->
+        <!-- TARJETAS DASHBOARD -->
         <div class="tarjetas" style="grid-template-columns:repeat(4, 1fr)">
           <div class="tarjeta">
             <p class="tarjeta-label">Pendientes</p>
@@ -180,9 +180,8 @@
             <p class="tarjeta-valor color-rojo" id="dash-rechazados">—</p>
           </div>
         </div>
-        </div>
 
-        <!-- PESTAÑAS DASHBOARD - FLUJO DE RETENCIONES -->
+        <!-- PESTAÑAS DASHBOARD -->
         <div class="pestanas" style="margin-bottom:12px">
           <button class="pestana activa" onclick="cambiarPestanaDash('PENDIENTE', this)">&#128203; Pendiente</button>
           <button class="pestana" onclick="cambiarPestanaDash('ENVIADO', this)">&#128228; Enviados a Tesaka</button>
@@ -197,7 +196,7 @@
             <button class="btn-azul" onclick="cargarDashboard()">&#8635; Actualizar</button>
           </div>
           <div class="acciones-sel">
-            <span id="dash-info-sel">0 facturas seleccionadas</span>
+            <span class="info-seleccion" id="dash-info-sel">0 facturas seleccionadas</span>
             <button class="btn-aprobar" id="btn-descargar-txt" onclick="descargarTxt()" disabled>&#11123; Descargar
               TXT</button>
             <button class="btn-secundario" onclick="limpiarSeleccionDash()">Limpiar selección</button>
@@ -241,57 +240,7 @@
 
   </div><!-- /pantalla-principal -->
 
-  <!-- MODAL: APROBAR RETENCIÓN TESAKA -->
-  <div id="overlay-aprobar-tesaka"
-    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
-    <div style="background:white;border-radius:8px;padding:24px;max-width:450px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <span style="width:32px;height:32px;border-radius:50%;background:#e8f5e0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#2d7a0e">✓</span>
-        <h3 style="font-size:15px;font-weight:bold;color:#333;margin:0">Aprobar retención en Tesaka</h3>
-      </div>
-      <input type="hidden" id="aprobar-tesaka-id" />
-      <p id="aprobar-tesaka-info" style="font-size:12px;color:#666;margin-bottom:12px"></p>
-      <div style="margin-bottom:16px">
-        <label style="font-size:11px;color:#333;display:block;margin-bottom:4px;font-weight:600">Número de aprobación Tesaka *</label>
-        <input type="text" id="aprobar-tesaka-numero"
-          style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-family:monospace;font-size:14px"
-          placeholder="Ej: 001-005-0000242" />
-        <p id="aprobar-tesaka-error" style="font-size:11px;color:#a32d2d;margin-top:4px;display:none"></p>
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button onclick="cerrarAprobarTesaka()"
-          style="padding:8px 16px;background:white;color:#333;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer">Cancelar</button>
-        <button onclick="confirmarAprobarTesaka()"
-          style="padding:8px 16px;background:#2d7a0e;color:white;border:none;border-radius:4px;font-size:13px;font-weight:bold;cursor:pointer">Aprobar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: RECHAZAR RETENCIÓN TESAKA -->
-  <div id="overlay-rechazar-tesaka"
-    style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
-    <div style="background:white;border-radius:8px;padding:24px;max-width:450px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <span style="width:32px;height:32px;border-radius:50%;background:#fce8e8;display:flex;align-items:center;justify-content:center;font-size:16px;color:#a32d2d">✕</span>
-        <h3 style="font-size:15px;font-weight:bold;color:#333;margin:0">Rechazar retención</h3>
-      </div>
-      <input type="hidden" id="rechazar-tesaka-id" />
-      <p id="rechazar-tesaka-info" style="font-size:12px;color:#666;margin-bottom:12px"></p>
-      <div style="margin-bottom:16px">
-        <label style="font-size:11px;color:#333;display:block;margin-bottom:4px;font-weight:600">Motivo del rechazo *</label>
-        <textarea id="rechazar-tesaka-motivo" rows="3"
-          style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;font-size:13px"
-          placeholder="Describir el motivo del rechazo de Tesaka..."></textarea>
-        <p id="rechazar-tesaka-error" style="font-size:11px;color:#a32d2d;margin-top:4px;display:none"></p>
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button onclick="cerrarRechazarTesaka()"
-          style="padding:8px 16px;background:white;color:#333;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer">Cancelar</button>
-        <button onclick="confirmarRechazarTesaka()"
-          style="padding:8px 16px;background:#a32d2d;color:white;border:none;border-radius:4px;font-size:13px;font-weight:bold;cursor:pointer">Rechazar</button>
-      </div>
-    </div>
-  </div>
+  <!-- MODAL RECHAZO SIFEN -->
   <div id="overlay-rechazo"
     style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
     <div
@@ -418,7 +367,49 @@
     </div>
   </div>
 
-  <script src="js/retenciones.js?v=35"></script>
+  <!-- MODAL: APROBAR RETENCIÓN TESAKA -->
+  <div id="overlay-aprobar-tesaka" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+    <div style="background:white;border-radius:8px;padding:24px;max-width:450px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="width:32px;height:32px;border-radius:50%;background:#e8f5e0;display:flex;align-items:center;justify-content:center;font-size:16px;color:#2d7a0e">✓</span>
+        <h3 style="font-size:15px;font-weight:bold;color:#333;margin:0">Aprobar retención en Tesaka</h3>
+      </div>
+      <input type="hidden" id="aprobar-tesaka-id" />
+      <p id="aprobar-tesaka-info" style="font-size:12px;color:#666;margin-bottom:12px"></p>
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;color:#333;display:block;margin-bottom:4px;font-weight:600">Número de aprobación Tesaka *</label>
+        <input type="text" id="aprobar-tesaka-numero" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-family:monospace;font-size:14px" placeholder="Ej: 001-005-0000242" />
+        <p id="aprobar-tesaka-error" style="font-size:11px;color:#a32d2d;margin-top:4px;display:none"></p>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cerrarAprobarTesaka()" style="padding:8px 16px;background:white;color:#333;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarAprobarTesaka()" style="padding:8px 16px;background:#2d7a0e;color:white;border:none;border-radius:4px;font-size:13px;font-weight:bold;cursor:pointer">Aprobar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RECHAZAR RETENCIÓN TESAKA -->
+  <div id="overlay-rechazar-tesaka" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+    <div style="background:white;border-radius:8px;padding:24px;max-width:450px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="width:32px;height:32px;border-radius:50%;background:#fce8e8;display:flex;align-items:center;justify-content:center;font-size:16px;color:#a32d2d">✕</span>
+        <h3 style="font-size:15px;font-weight:bold;color:#333;margin:0">Rechazar retención</h3>
+      </div>
+      <input type="hidden" id="rechazar-tesaka-id" />
+      <p id="rechazar-tesaka-info" style="font-size:12px;color:#666;margin-bottom:12px"></p>
+      <div style="margin-bottom:16px">
+        <label style="font-size:11px;color:#333;display:block;margin-bottom:4px;font-weight:600">Motivo del rechazo *</label>
+        <textarea id="rechazar-tesaka-motivo" rows="3" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;resize:vertical;font-size:13px" placeholder="Describir el motivo del rechazo de Tesaka..."></textarea>
+        <p id="rechazar-tesaka-error" style="font-size:11px;color:#a32d2d;margin-top:4px;display:none"></p>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button onclick="cerrarRechazarTesaka()" style="padding:8px 16px;background:white;color:#333;border:1px solid #ccc;border-radius:4px;font-size:13px;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarRechazarTesaka()" style="padding:8px 16px;background:#a32d2d;color:white;border:none;border-radius:4px;font-size:13px;font-weight:bold;cursor:pointer">Rechazar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/retenciones.js?v=39"></script>
 </body>
 
 </html>
