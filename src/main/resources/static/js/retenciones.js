@@ -226,9 +226,27 @@ function cambiarPestanaDash(nombre, elemento) {
   pestanaDashActual = nombre;
   seleccionadosDash = [];
   actualizarInfoSelDash();
+  // Reset visual de TODAS las pestañas del dashboard
   var pestanas = document.querySelectorAll("#vista-dashboard .pestana");
-  for (var i = 0; i < pestanas.length; i++) pestanas[i].classList.remove("activa");
+  for (var i = 0; i < pestanas.length; i++) {
+    pestanas[i].classList.remove("activa");
+    pestanas[i].style.cssText = "border-bottom:3px solid transparent !important;color:#888 !important;font-weight:normal !important;background:transparent !important;";
+  }
+  // Marcar la activa
   elemento.classList.add("activa");
+  elemento.style.cssText = "border-bottom:3px solid #0e347a !important;color:#0e347a !important;font-weight:bold !important;background:transparent !important;";
+
+  // Ocultar/mostrar checkbox y botones según la pestaña
+  var mostrarCheckbox = (nombre === "PENDIENTE" || nombre === "RECHAZADO");
+  var btnDescargar = document.getElementById("btn-descargar-txt");
+  var infoSel = document.querySelector("#vista-dashboard .info-seleccion");
+  var btnLimpiar = document.querySelector("#vista-dashboard .btn-secundario");
+  var checkAll = document.getElementById("dash-check-all");
+  if (btnDescargar) btnDescargar.style.display = mostrarCheckbox ? "" : "none";
+  if (infoSel) infoSel.style.display = mostrarCheckbox ? "" : "none";
+  if (btnLimpiar) btnLimpiar.style.display = mostrarCheckbox ? "" : "none";
+  if (checkAll) checkAll.parentElement.style.display = mostrarCheckbox ? "" : "none";
+
   renderDashboard();
 }
 
@@ -432,10 +450,17 @@ function cerrarAprobarTesaka() {
 function confirmarAprobarTesaka() {
   var id = document.getElementById("aprobar-tesaka-id").value;
   var numero = document.getElementById("aprobar-tesaka-numero").value.trim();
+  var errEl = document.getElementById("aprobar-tesaka-error");
   if (!numero) {
-    var err = document.getElementById("aprobar-tesaka-error");
-    err.textContent = "El número de aprobación es obligatorio.";
-    err.style.display = "block";
+    errEl.textContent = "El número de aprobación es obligatorio.";
+    errEl.style.display = "block";
+    document.getElementById("aprobar-tesaka-numero").focus();
+    return;
+  }
+  // Solo permite números y guiones (formato: 001-005-0000242)
+  if (!/^[\d\-]+$/.test(numero)) {
+    errEl.textContent = "El número de control solo debe contener números y guiones (ej: 001-005-0000242).";
+    errEl.style.display = "block";
     document.getElementById("aprobar-tesaka-numero").focus();
     return;
   }
