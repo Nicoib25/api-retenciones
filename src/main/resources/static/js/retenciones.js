@@ -154,7 +154,8 @@ document.addEventListener("DOMContentLoaded", function() {
   document.getElementById("login-usuario").addEventListener("keydown", function(e) {
     if (e.key === "Enter") document.getElementById("login-clave").focus();
   });
-  document.getElementById("btn-enviar").addEventListener("click", enviarAlSifen);
+  var btnEnviar = document.getElementById("btn-enviar");
+  if (btnEnviar) btnEnviar.addEventListener("click", enviarAlSifen);
   // Restaurar sesion validando el token contra el backend
   restaurarSesion();
 });
@@ -261,19 +262,21 @@ function cargarFacturasInterno() {
         };
       });
       // Filtrar las facturas que YA fueron procesadas en MariaDB.
-      // Una factura ya enviada/aprobada no debe seguir en "pendientes de aprobación".
-      // Las REVERTIDA se mantienen (vuelven al pool para re-procesarse).
-      var idsProcesados = {};
-      retencionesDB.forEach(function(r) {
-        var estadoR = (r.estadoSifen || "").toUpperCase();
-        if (estadoR && estadoR !== "REVERTIDA" && r.idFacturaOrig != null) {
-          idsProcesados[String(r.idFacturaOrig)] = true;
-        }
-      });
-      facturas = facturas.filter(function(f) {
-        return !idsProcesados[String(f.id)];
-      });
-      renderTabla();
+      // Usamos el endpoint /procesados-ids que trae TODOS los id_factura_orig
+      // procesados sin límite (retencionesDB solo trae 500, no alcanza).
+      fetch(URL_API + "/retenciones/procesados-ids")
+        .then(function(r){ return r.ok ? r.json() : { ids: [] }; })
+        .then(function(data){
+          var idsProcesados = {};
+          (data.ids || []).forEach(function(id){ idsProcesados[String(id)] = true; });
+          facturas = facturas.filter(function(f) {
+            return !idsProcesados[String(f.id)];
+          });
+          // Guardar el conteo real de aprobadas para la tarjeta
+          window.__totalAprobadas = data.aprobadas || 0;
+          renderTabla();
+        })
+        .catch(function(){ renderTabla(); });
     })
     .catch(function(error) {
       if (primeraVezFacturas) {
@@ -1130,10 +1133,16 @@ function actualizarStats() {
   var elPendiente = document.getElementById("stat-pendiente");
   var elConOrden = document.getElementById("stat-con-orden");
   var elSinOrden = document.getElementById("stat-sin-orden");
-  if (elTotal) elTotal.textContent = facturas.length;
+  var totalAprob = (typeof window.__totalAprobadas === "number") ? window.__totalAprobadas : 0;
+  if (elTotal) elTotal.textContent = facturas.length + totalAprob;
   if (elPendiente) elPendiente.textContent = pendiente;
   if (elConOrden) elConOrden.textContent = conOrden;
   if (elSinOrden) elSinOrden.textContent = sinOrden;
+  // Total de facturas ya aprobadas (conteo real del backend, sin límite)
+  var elAprobadas = document.getElementById("stat-aprobadas");
+  if (elAprobadas) {
+    elAprobadas.textContent = (typeof window.__totalAprobadas === "number") ? window.__totalAprobadas : 0;
+  }
 }
 
 function toggleSeleccion(id, checkbox) {
@@ -2284,12 +2293,13 @@ function procesarRespuestasTesaka(lista) {
   mostrarMensaje("Procesando " + items.length + " comprobante(s) unico(s)...", "info");
 
   var aprobadas = 0, rechazadas = 0, borradoresProc = 0, noEncontrados = 0, errCount = 0;
+  var listaNoEncontrados = [];
   var promesas = items.map(function(it) {
     return fetch(URL_API + "/retenciones/guardar-respuesta", {
       method: "POST", headers: authHeaders(),
       body: JSON.stringify(it)
     })
-    .then(function(res){ return res.json().then(function(j){ return { status: res.status, j: j, estado: it.estado }; }); })
+    .then(function(res){ return res.json().then(function(j){ return { status: res.status, j: j, estado: it.estado, nro: it.nro_comprobante }; }); })
     .then(function(r){
       if (r.status === 200) {
         if (r.estado === "RECHAZADO") rechazadas++;
@@ -2297,11 +2307,13 @@ function procesarRespuestasTesaka(lista) {
         else aprobadas++;
       } else if (r.status === 404) {
         noEncontrados++;
+        listaNoEncontrados.push(r.nro);
       } else {
         errCount++;
+        console.error("[cargar-respuestas] error " + r.status + " en " + r.nro + ":", r.j.error || r.j);
       }
     })
-    .catch(function(){ errCount++; });
+    .catch(function(e){ errCount++; console.error("[cargar-respuestas] error de red:", e.message); });
   });
 
   Promise.all(promesas).then(function(){
@@ -2317,6 +2329,12 @@ function procesarRespuestasTesaka(lista) {
     var tipo = "ok";
     if (aprobadas === 0 && rechazadas === 0 && borradoresProc === 0) tipo = "error";
     else if (noEncontrados > 0 || errCount > 0 || borradoresProc > 0) tipo = "warning";
+
+    // Diagnóstico: listar en consola los comprobantes que no se encontraron.
+    if (listaNoEncontrados.length > 0) {
+      console.warn("[cargar-respuestas] " + listaNoEncontrados.length +
+        " comprobante(s) no encontrado(s) en la base:", listaNoEncontrados);
+    }
 
     mostrarMensaje(msg, tipo);
     cargarDashboard();

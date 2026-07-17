@@ -103,6 +103,31 @@ public class RetencionController {
     }
 
     // =====================================================================
+    // GET /retenciones/procesados-ids
+    // Devuelve TODOS los id_factura_orig que ya están en MariaDB en un
+    // estado que los saca del pool de pendientes (todo menos REVERTIDA).
+    // Liviano (solo ids) y sin límite, para que el filtro de pendientes
+    // funcione con cualquier volumen.
+    // =====================================================================
+    @GetMapping("/procesados-ids")
+    public ResponseEntity<?> procesadosIds() {
+        java.util.List<Long> ids = mariaDb.queryForList(
+            "SELECT DISTINCT id_factura_orig FROM retenciones_enviadas " +
+            "WHERE id_factura_orig IS NOT NULL AND estado <> 'REVERTIDA'",
+            Long.class
+        );
+        // Conteo real de aprobadas (sin el límite de 500 del dashboard)
+        Integer aprobadas = mariaDb.queryForObject(
+            "SELECT COUNT(*) FROM retenciones_enviadas WHERE estado = 'APROBADO'",
+            Integer.class
+        );
+        return ResponseEntity.ok(java.util.Map.of(
+            "ids", ids,
+            "aprobadas", aprobadas != null ? aprobadas : 0
+        ));
+    }
+
+    // =====================================================================
     // GET /retenciones/auditoria/incidencias   (SOLO SOPORTE)
     // =====================================================================
     @GetMapping("/auditoria/incidencias")
