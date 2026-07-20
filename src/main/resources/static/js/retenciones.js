@@ -30,6 +30,68 @@ function authHeaders() {
 }
 
 // =============================================
+// MANEJO DE SESION EXPIRADA (401)
+// =============================================
+// Interceptor global: cualquier respuesta 401 del backend significa que el
+// token venció o es inválido. En vez de que los botones "no hagan nada"
+// silenciosamente, mandamos al usuario al login con un aviso claro.
+var sesionExpiradaAvisada = false;
+
+function manejarSesionExpirada() {
+  if (sesionExpiradaAvisada) return;   // evitar múltiples avisos simultáneos
+  sesionExpiradaAvisada = true;
+
+  sessionStorage.removeItem("authToken");
+  sessionStorage.removeItem("usr_retencion");
+  USUARIO_ROL = null; USUARIO_ID = null; USUARIO_NOMBRE = null;
+
+  // Volver a la pantalla de login
+  var principal = document.getElementById("pantalla-principal");
+  var login = document.getElementById("pantalla-login");
+  if (principal) principal.style.display = "none";
+  if (login) login.style.display = "flex";
+
+  var errLogin = document.getElementById("login-error");
+  if (errLogin) {
+    errLogin.textContent = "Tu sesión expiró. Volvé a iniciar sesión.";
+    errLogin.style.display = "block";
+  }
+  var inputUsr = document.getElementById("login-usuario");
+  var inputClave = document.getElementById("login-clave");
+  if (inputClave) inputClave.value = "";
+  if (inputUsr) inputUsr.focus();
+
+  facturas = [];
+  retencionesDB = [];
+
+  // Permitir un nuevo aviso si vuelve a pasar más adelante
+  setTimeout(function(){ sesionExpiradaAvisada = false; }, 3000);
+}
+
+// Envolvemos window.fetch para detectar 401 en TODAS las llamadas,
+// sin tener que modificar cada una por separado.
+(function() {
+  var fetchOriginal = window.fetch;
+  window.fetch = function(recurso, opciones) {
+    var url = (typeof recurso === "string") ? recurso
+            : (recurso && recurso.url) ? recurso.url : "";
+    return fetchOriginal.apply(this, arguments).then(function(res) {
+      if (res && res.status === 401) {
+        // Excepciones donde un 401 es esperado y NO significa sesión expirada:
+        //  - /auth/login  : credenciales incorrectas (lo maneja doLogin)
+        //  - /auth/me     : chequeo inicial al abrir la app sin sesión previa
+        var esperado = (url.indexOf("/auth/login") !== -1) ||
+                       (url.indexOf("/auth/me") !== -1);
+        if (!esperado) {
+          manejarSesionExpirada();
+        }
+      }
+      return res;
+    });
+  };
+})();
+
+// =============================================
 // LOGIN (contra el backend, con BCrypt)
 // =============================================
 function doLogin() {
