@@ -23,7 +23,7 @@ public class DataSourceConfig {
         config.setConnectionTestQuery("SELECT 1");
         config.setInitializationFailTimeout(-1);
         config.setMaximumPoolSize(3);
-        config.setMinimumIdle(0);
+        config.setMinimumIdle(1);
         config.setMaxLifetime(55000);
         config.setIdleTimeout(30000);
         config.setConnectionTimeout(60000);
@@ -35,9 +35,9 @@ public class DataSourceConfig {
     @Bean(name = "mariadbDataSource")
     public DataSource mariadbDataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl("jdbc:mariadb://localhost:3306/retenciones_sifen");
-        config.setUsername("root");
-        config.setPassword("dutriec26");
+        config.setJdbcUrl("jdbc:mariadb://192.168.0.10:3306/bdutriec");
+        config.setUsername("SYSDUTRIECSA");
+        config.setPassword("DutriecSA_2024");
         config.setDriverClassName("org.mariadb.jdbc.Driver");
         return new HikariDataSource(config);
     }
