@@ -95,14 +95,15 @@ public class FacturaController {
                     continue;
                 }
 
+                
                 // Validación: la factura debe tener orden de pago asignada
-                if (factura.getCompra() == null) {
+               /* if (factura.getCompra() == null) {
                     r.setEstado("ERROR");
                     r.setMotivo("La factura " + factura.getFacturaFisica()
                             + " no tiene orden de pago asignada. Generá primero la orden de pago.");
                     resultados.add(r);
                     continue;
-                }
+                }*/
 
                 // ---- Generar correlativo ----
                 String numDocRet = retencionRepo.generarNumDocRet();
